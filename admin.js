@@ -13,6 +13,9 @@
     return;
   }
 
+  // The admin page is never hidden by the shop's "wait for translation" rule
+  document.documentElement.classList.add("i18n-ready");
+
   const CFG = window.AURELE_CONFIG || {};
   const BUCKET = "product-images";
   const LANGS = [["ar", "العربية", "rtl"], ["fr", "Français", "ltr"], ["en", "English", "ltr"]];
