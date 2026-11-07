@@ -297,26 +297,29 @@ em { font-style: italic; color: var(--gold-2); }
 
 /* ---------- For him / for her ---------- */
 .shopby { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+/* Full-bleed lifestyle photo; the photos keep their products on the left,
+   so the text always sits on the dark empty side (physical right) in every language. */
 .shop-tile {
-  position: relative; min-height: 500px; display: flex; flex-direction: column; justify-content: flex-end;
-  padding: clamp(1.4rem, 3vw, 2.4rem); border: 1px solid var(--line); border-radius: 26px; overflow: hidden;
-  background: radial-gradient(circle at 50% 38%, rgba(201, 169, 110, .16), transparent 60%), var(--bg-2);
-  transition: border-color .4s;
+  position: relative; min-height: 520px; display: flex; flex-direction: column; justify-content: flex-end;
+  padding: clamp(1.4rem, 3vw, 2.4rem); border: 1px solid rgba(201, 169, 110, .18); border-radius: 26px; overflow: hidden;
+  background: #0b0b0a; transition: border-color .4s; isolation: isolate;
 }
-.shop-tile:hover { border-color: rgba(201, 169, 110, .45); }
-.tile-art { position: absolute; inset: 0 0 130px 0; }
-.tile-art > div { position: absolute; transition: transform .8s var(--ease); filter: drop-shadow(0 20px 30px var(--obj-shadow)); }
-.tile-art .a { width: 30%; left: 35%; top: 6%; z-index: 2; }
-.tile-art .b { width: 30%; left: 7%; top: 16%; transform: rotate(-10deg); }
-.tile-art .c { width: 30%; right: 7%; top: 16%; transform: rotate(10deg); }
-.shop-tile:hover .a { transform: translateY(-8px) scale(1.04); }
-.shop-tile:hover .b { transform: rotate(-15deg) translateX(-8px); }
-.shop-tile:hover .c { transform: rotate(15deg) translateX(8px); }
-.tile-copy { position: relative; z-index: 3; }
-.tile-copy .eyebrow { margin-bottom: .4rem; }
-.tile-copy h3 { font-family: var(--serif); font-weight: 300; font-size: clamp(2.2rem, 4vw, 3.2rem); margin: 0 0 .3rem; line-height: 1; }
-.tile-copy span { color: var(--muted); font-size: .88rem; transition: color .3s; }
-.shop-tile:hover .tile-copy span { color: var(--gold-2); }
+.shop-tile:hover { border-color: rgba(201, 169, 110, .55); }
+.tile-photo {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 20% 60%;
+  z-index: -2; transition: transform 1.4s var(--ease);
+}
+.shop-tile:hover .tile-photo { transform: scale(1.05); }
+.shop-tile::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(to left, rgba(9, 9, 8, .82) 0%, rgba(9, 9, 8, .35) 40%, transparent 65%),
+              linear-gradient(to top, rgba(9, 9, 8, .75) 0%, transparent 40%);
+}
+.tile-copy { position: relative; margin-left: auto; max-width: 62%; text-align: right; }
+.tile-copy .eyebrow { margin-bottom: .4rem; color: #d9b878; }
+.tile-copy h3 { font-family: var(--serif); font-weight: 300; font-size: clamp(2.2rem, 4vw, 3.2rem); margin: 0 0 .3rem; line-height: 1.05; color: #f3ede2; }
+.tile-copy span { color: #cfc6b6; font-size: .88rem; transition: color .3s; }
+.shop-tile:hover .tile-copy span { color: #e6cf9f; }
 .card-tag { position: absolute; top: 1.2rem; inset-inline-start: 1.2rem; font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); border: 1px solid rgba(201, 169, 110, .35); padding: .3rem .7rem; border-radius: 999px; z-index: 1; }
 .card-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; position: relative; }
 .card h3 { font-family: var(--serif); font-weight: 400; font-size: 1.4rem; margin: 0; }

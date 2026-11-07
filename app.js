@@ -673,16 +673,7 @@
   const teaser = $("#teaserGift");
   if (teaser) teaser.innerHTML = giftBoxSVG();
 
-  /* ---------------- For Him / For Her tiles (home + shop chooser) ---------------- */
-  const tile = (el, ids) => el && (el.innerHTML = ids.map((id, i) => `<div class="${"abc"[i]}">${render(byId(id))}</div>`).join(""));
-  const pickFor = (g) => {
-    const list = PRODUCTS.filter((p) => p.gender === g || p.gender === "unisex");
-    const seen = new Set(), first = [], rest = [];
-    list.forEach((p) => (seen.has(p.cat) ? rest : (seen.add(p.cat), first)).push(p));
-    return [...first, ...rest].slice(0, 3).map((p) => p.id);
-  };
-  tile($("#tileMen"), pickFor("men"));
-  tile($("#tileWomen"), pickFor("women"));
+  /* For Him / For Her tiles use fixed lifestyle photos (images/brand/), set in the HTML. */
 
   /* ---------------- Shop page ---------------- */
   const grid = $("#grid");
