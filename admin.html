@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N9QaHugjEEebbtUayVbELuB1RrwDPvHyWNM9pArNbz8=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://afdgokyvhijffygvjqem.supabase.co; connect-src 'self' https://afdgokyvhijffygvjqem.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin — RID ACCE</title>
+  <script>
+    (function () {
+      var t = "dark";
+      try { t = localStorage.getItem("aurele-theme") || "dark"; } catch (e) {}
+      document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&family=IBM+Plex+Sans+Arabic:wght@300;400;500&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="admin.css?v=1" />
+</head>
+<body class="admin">
+  <header class="ad-header">
+    <a href="index.html" class="logo"><span class="logo-mark">R</span><span class="logo-word">RID ACCE</span></a>
+    <span class="ad-badge">Admin</span>
+    <div class="ad-header-actions">
+      <span class="ad-who" id="who"></span>
+      <a class="btn btn-ghost btn-sm" href="index.html" target="_blank" rel="noopener">View shop ↗</a>
+      <button class="btn btn-ghost btn-sm" id="signOut" hidden>Sign out</button>
+    </div>
+  </header>
+
+  <!-- ============ SETUP (no Supabase configured yet) ============ -->
+  <main class="ad-wrap" id="viewSetup" hidden>
+    <section class="ad-card ad-narrow">
+      <p class="eyebrow">Setup</p>
+      <h1 class="ad-title">Connect the shop to Supabase</h1>
+      <p class="ad-muted" id="setupError"></p>
+      <ol class="ad-steps">
+        <li>In the shop's <b>Supabase account</b>, create a new project (region close to Morocco, e.g. <i>Frankfurt</i> or <i>Paris</i>).</li>
+        <li>Open <b>SQL Editor</b>, paste the whole content of <code>supabase/schema.sql</code> and press <b>Run</b>.</li>
+        <li>Still in SQL Editor, run (with the admin's e-mail):<br /><code>insert into public.admins (email) values ('admin@your-shop.ma');</code></li>
+        <li><b>Authentication → Users → Add user</b>: create that same e-mail with a strong password (tick “Auto confirm”).</li>
+        <li><b>Authentication → Sign In / Providers</b>: turn <b>off</b> “Allow new users to sign up”.</li>
+        <li><b>Project Settings → API</b>: copy the <i>Project URL</i> and the <i>anon public</i> key into <code>config.js</code>.</li>
+        <li>Reload this page, sign in, and press <b>Import starter catalogue</b>.</li>
+      </ol>
+    </section>
+  </main>
+
+  <!-- ============ LOGIN ============ -->
+  <main class="ad-wrap" id="viewLogin" hidden>
+    <form class="ad-card ad-narrow ad-login" id="loginForm">
+      <p class="eyebrow">Admin</p>
+      <h1 class="ad-title">Sign in</h1>
+      <label class="ad-field"><span>E-mail</span><input class="input" type="email" id="loginEmail" autocomplete="username" required /></label>
+      <label class="ad-field"><span>Password</span><input class="input" type="password" id="loginPassword" autocomplete="current-password" required /></label>
+      <p class="ad-error" id="loginError"></p>
+      <button class="btn btn-gold btn-block" type="submit" id="loginBtn">Sign in</button>
+    </form>
+  </main>
+
+  <!-- ============ APP ============ -->
+  <main class="ad-wrap" id="viewApp" hidden>
+    <div class="ad-alert" id="notAdmin" hidden>
+      This account is signed in but is <b>not an admin</b>: changes will be refused.
+      Add its e-mail to the <code>admins</code> table (see <code>supabase/schema.sql</code>, step 5).
+    </div>
+
+    <div class="ad-top">
+      <div>
+        <p class="eyebrow">Catalogue</p>
+        <h1 class="ad-title">Products</h1>
+      </div>
+      <div class="ad-stats" id="stats"></div>
+    </div>
+
+    <div class="ad-toolbar">
+      <input class="input ad-search" id="search" type="search" placeholder="Search name, brand or id…" />
+      <select class="input ad-select" id="fCat">
+        <option value="">All categories</option>
+        <option>Watches</option><option>Jewellery</option><option>Leather goods</option><option>Eyewear</option>
+      </select>
+      <select class="input ad-select" id="fGender">
+        <option value="">Men & women</option>
+        <option value="women">Women</option><option value="men">Men</option><option value="unisex">Unisex</option>
+      </select>
+      <div class="ad-toolbar-end">
+        <button class="btn btn-ghost btn-sm" id="importSeed">Import starter catalogue</button>
+        <button class="btn btn-gold btn-sm" id="newProduct">+ New product</button>
+      </div>
+    </div>
+
+    <div class="ad-list" id="list"></div>
+    <p class="ad-empty" id="empty" hidden>No products yet. Press <b>Import starter catalogue</b> to add the 16 starter pieces, or <b>+ New product</b>.</p>
+  </main>
+
+  <!-- ============ EDITOR ============ -->
+  <div class="ad-editor" id="editor" hidden>
+    <div class="ad-editor-backdrop" data-close-editor></div>
+    <form class="ad-editor-panel" id="editorForm" novalidate>
+      <div class="ad-editor-head">
+        <div>
+          <p class="eyebrow" id="edKicker">New product</p>
+          <h2 class="ad-title" id="edTitle">Untitled</h2>
+        </div>
+        <button type="button" class="icon-close" data-close-editor aria-label="Close">✕</button>
+      </div>
+      <div class="ad-editor-body" id="edBody"></div>
+      <div class="ad-editor-foot">
+        <button type="button" class="btn btn-ghost btn-sm ad-danger" id="edDelete">Delete</button>
+        <span class="ad-muted" id="edStatus"></span>
+        <button type="button" class="btn btn-ghost btn-sm" data-close-editor>Cancel</button>
+        <button type="submit" class="btn btn-gold btn-sm" id="edSave">Save product</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
+  <script src="config.js?v=2"></script>
+  <script src="products-seed.js?v=1"></script>
+  <script src="admin.js?v=2"></script>
+</body>
+</html>

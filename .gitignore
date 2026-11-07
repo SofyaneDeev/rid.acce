@@ -1,0 +1,19 @@
+# Built by build.sh (Netlify rebuilds it on every deploy)
+deploy/
+
+# Local tools / editor settings
+.claude/
+.vscode/
+.idea/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Never commit secrets
+.env
+.env.*
+*.pem
+*.key
