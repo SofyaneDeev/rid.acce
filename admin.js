@@ -72,7 +72,8 @@
     $("#signOut").hidden = false;
     const { data: adminRow } = await sb.from("admins").select("email").maybeSingle();
     $("#notAdmin").hidden = !!adminRow;
-    await loadProducts();
+    await Promise.all([loadProducts(), loadOrders()]);
+    setInterval(() => { if (!document.hidden && !$("#tabOrders").hidden) loadOrders(); }, 60000);
   }
 
   /* ---------------- Product list ---------------- */
@@ -396,6 +397,108 @@
   });
 
   $("#newProduct").addEventListener("click", () => openEditor(null));
+
+  /* ---------------- Tabs ---------------- */
+  $$(".ad-tab").forEach((b) => b.addEventListener("click", () => {
+    $$(".ad-tab").forEach((x) => x.classList.toggle("active", x === b));
+    $("#tabOrders").hidden = b.dataset.tab !== "orders";
+    $("#tabProducts").hidden = b.dataset.tab !== "products";
+    if (b.dataset.tab === "orders") loadOrders();
+  }));
+
+  /* ---------------- Orders (cash on delivery) ----------------
+     Everything shown here was typed by customers → always escaped with esc(). */
+  const STATUSES = [["new", "New"], ["confirmed", "Confirmed"], ["shipped", "Shipped"], ["delivered", "Delivered"], ["cancelled", "Cancelled"]];
+  const WAHELLO = {
+    ar: (o) => `مرحباً ${o.customer_name}، بخصوص طلبك ${o.ref} من RID ACCE`,
+    fr: (o) => `Bonjour ${o.customer_name}, au sujet de votre commande RID ACCE ${o.ref}`,
+    en: (o) => `Hello ${o.customer_name}, about your RID ACCE order ${o.ref}`,
+  };
+  const intlPhone = (p) => (String(p).startsWith("+") ? String(p).slice(1) : "212" + String(p).slice(1)).replace(/\D/g, "");
+  let orders = [];
+
+  async function loadOrders() {
+    const { data, error } = await sb.from("orders").select("*").order("created_at", { ascending: false }).limit(500);
+    if (error) { toast(explain(error), true); return; }
+    orders = data || [];
+    $("#oUpdated").textContent = "Updated " + new Date().toLocaleTimeString("fr-MA", { hour: "2-digit", minute: "2-digit" });
+    renderOrders();
+  }
+
+  function renderOrders() {
+    const q = $("#oSearch").value.trim().toLowerCase(), st = $("#oStatus").value;
+    const rows = orders.filter((o) => (!st || o.status === st) &&
+      (!q || [o.ref, o.customer_name, o.phone, o.city].join(" ").toLowerCase().includes(q)));
+    const count = (s) => orders.filter((o) => o.status === s).length;
+    const open = orders.filter((o) => ["new", "confirmed", "shipped"].includes(o.status));
+    $("#orderStats").innerHTML = `<div><b>${count("new")}</b><span>new</span></div><div><b>${open.length}</b><span>in progress</span></div>` +
+      `<div><b>${esc(fmt(open.reduce((a, o) => a + Number(o.total), 0)))}</b><span>to collect</span></div>`;
+    $("#newCount").textContent = count("new");
+    $("#newCount").hidden = !count("new");
+    $("#ordersEmpty").hidden = orders.length > 0;
+    $("#ordersList").innerHTML = rows.map((o) => {
+      const items = (Array.isArray(o.items) ? o.items : []).map((it) => `
+        <tr><td>${esc(it.qty)} ×</td><td>${esc([it.brand, it.name].filter(Boolean).join(" "))}${it.variant_name ? ` <em>· ${esc(it.variant_name)}</em>` : ""}${it.size ? ` <em>· ${esc(it.size)}</em>` : ""}</td><td>${esc(fmt(it.line_total))}</td></tr>`).join("");
+      const g = o.gift;
+      const giftHtml = g ? `<p class="ad-gift">🎁 ${g.wrap === "coffret" ? "Lacquered coffret" : "Signature box"}${g.hide_prices ? " · hide prices" : ""}${g.message ? `<br><span>“${esc(g.message)}”</span>` : ""}</p>` : "";
+      const wa = `https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent((WAHELLO[o.lang] || WAHELLO.ar)(o))}`;
+      return `
+      <article class="ad-order is-${esc(o.status)}" data-id="${esc(o.id)}">
+        <header class="ad-order-head">
+          <div><b class="ad-ref">${esc(o.ref)}</b><span class="ad-muted"> · ${esc(new Date(o.created_at).toLocaleString("fr-MA", { dateStyle: "medium", timeStyle: "short" }))} · ${esc(String(o.lang).toUpperCase())}</span></div>
+          <select class="input ad-select ad-status" data-act="status">${STATUSES.map(([v, n]) => `<option value="${v}" ${v === o.status ? "selected" : ""}>${n}</option>`).join("")}</select>
+        </header>
+        <div class="ad-order-grid">
+          <div class="ad-cust">
+            <h3>${esc(o.customer_name)}</h3>
+            <p class="ad-phone" dir="ltr">${esc(o.phone)}</p>
+            <p class="ad-actions"><a class="btn btn-ghost btn-sm" href="tel:${esc(o.phone)}">Call</a><a class="btn btn-ghost btn-sm" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">WhatsApp</a></p>
+            <p><b>${esc(o.city)}</b><br>${esc(o.address)}</p>
+            ${o.note ? `<p class="ad-note">“${esc(o.note)}”</p>` : ""}
+          </div>
+          <div class="ad-items">
+            <table>${items}</table>
+            ${giftHtml}
+            <p class="ad-total">${Number(o.wrap_price) ? `<span class="ad-muted">incl. wrapping ${esc(fmt(o.wrap_price))}</span>` : ""}<b>${esc(fmt(o.total))}</b></p>
+          </div>
+        </div>
+        <footer class="ad-order-foot">
+          <textarea class="input textarea" data-act="note" rows="1" maxlength="2000" placeholder="Private note (only admins see it)">${esc(o.admin_note || "")}</textarea>
+          <button class="btn btn-ghost btn-sm" data-act="saveNote">Save note</button>
+          <button class="btn btn-ghost btn-sm ad-danger" data-act="delete">Delete</button>
+        </footer>
+      </article>`;
+    }).join("");
+  }
+  ["#oSearch", "#oStatus"].forEach((s) => $(s).addEventListener("input", renderOrders));
+  $("#oRefresh").addEventListener("click", loadOrders);
+
+  $("#ordersList").addEventListener("change", async (e) => {
+    if (e.target.dataset.act !== "status") return;
+    const card = e.target.closest(".ad-order"), id = card.dataset.id, status = e.target.value;
+    if (!STATUSES.some(([v]) => v === status)) return;
+    const { error } = await sb.from("orders").update({ status }).eq("id", id);
+    if (error) { toast(explain(error), true); return loadOrders(); }
+    orders.find((o) => o.id === id).status = status;
+    renderOrders();
+    toast("Status updated");
+  });
+  $("#ordersList").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const card = b.closest(".ad-order"), id = card.dataset.id, o = orders.find((x) => x.id === id);
+    if (b.dataset.act === "saveNote") {
+      const admin_note = $('[data-act="note"]', card).value.slice(0, 2000);
+      const { error } = await sb.from("orders").update({ admin_note }).eq("id", id);
+      if (error) return toast(explain(error), true);
+      o.admin_note = admin_note; toast("Note saved");
+    }
+    if (b.dataset.act === "delete") {
+      if (!confirm(`Delete order ${o.ref} permanently?\nTip: set it to “Cancelled” instead to keep a record.`)) return;
+      const { error } = await sb.from("orders").delete().eq("id", id);
+      if (error) return toast(explain(error), true);
+      orders = orders.filter((x) => x.id !== id); renderOrders(); toast("Order deleted");
+    }
+  });
 
   /* ---------------- Start ---------------- */
   sb.auth.getSession().then(({ data }) => (data.session ? enterApp(data.session) : show("#viewLogin")));

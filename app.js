@@ -1088,9 +1088,22 @@
   });
   paintGift();
 
+  // Keep bag prices in line with the catalogue (the database recomputes them anyway when ordering)
+  function syncBagPrices() {
+    bag.forEach((i) => {
+      const p = i.pid && byId(i.pid);
+      i.unavailable = !p;
+      if (!p) return;
+      const v = (p.variants || []).find((x) => x.key === (i.sel && i.sel.variant)) || (p.variants || [])[0];
+      i.price = v ? v.price : p.price;
+    });
+  }
+  const bagSubtotal = () => bag.reduce((a, i) => a + (i.unavailable ? 0 : i.qty * i.price), 0);
+  const orderTotal = () => bagSubtotal() + giftCost();
   function renderBag() {
+    syncBagPrices();
     $("#bagCount").textContent = bag.reduce((a, i) => a + i.qty, 0);
-    $("#drawerTotal").textContent = fmt(bag.reduce((a, i) => a + i.qty * i.price, 0) + giftCost());
+    $("#drawerTotal").textContent = fmt(orderTotal());
     $("#giftBox").hidden = !bag.length;
     $("#giftRow").hidden = !(gift.on && bag.length);
     $("#giftRowName").textContent = WRAPS[gift.wrap].name + (gift.hide ? t("gift.pricesHidden") : "");
@@ -1106,6 +1119,7 @@
         <div>
           <h4>${escapeHTML(i.name)}</h4>
           <small>${escapeHTML((i.pid && byId(i.pid) && i.sel ? summaryFor(byId(i.pid), i.sel) : "") || i.sub || subtitle(i.cfg))}${i.engraving ? `<br>${escapeHTML(t("bag.engraved", i.engraving))}` : ""}</small>
+          ${i.unavailable ? `<small class="bag-warn">${t("bag.unavailable")}</small>` : ""}
           <div class="qty"><button data-act="dec" data-i="${idx}" aria-label="Decrease">−</button><span>${i.qty}</span><button data-act="inc" data-i="${idx}" aria-label="Increase">+</button></div>
         </div>
         <div class="right"><strong>${fmt(i.price * i.qty)}</strong><button class="remove" data-act="rm" data-i="${idx}">${t("bag.remove")}</button></div>
@@ -1116,18 +1130,136 @@
     const b = e.target.closest("[data-act]");
     if (!b) return;
     const i = +b.dataset.i;
-    if (b.dataset.act === "inc") bag[i].qty++;
+    if (b.dataset.act === "inc") bag[i].qty = Math.min(10, bag[i].qty + 1);
     if (b.dataset.act === "dec") bag[i].qty = Math.max(1, bag[i].qty - 1);
     if (b.dataset.act === "rm") bag.splice(i, 1);
     saveBag();
   });
   function openDrawer() { drawer.classList.add("open"); drawer.setAttribute("aria-hidden", "false"); document.body.classList.add("locked"); }
-  function closeDrawer() { drawer.classList.remove("open"); drawer.setAttribute("aria-hidden", "true"); document.body.classList.remove("locked"); }
+  function closeDrawer() {
+    drawer.classList.remove("open"); drawer.setAttribute("aria-hidden", "true"); document.body.classList.remove("locked");
+    const done = $("#checkoutDone"); if (done && done.hidden && $("#checkoutForm") && !$("#checkoutForm").hidden) setView("bag");
+  }
   $("#bagBtn").addEventListener("click", openDrawer);
   $$("[data-close-drawer]").forEach((el) => el.addEventListener("click", closeDrawer));
+  /* ---------------- Checkout: cash on delivery (+ optional WhatsApp) ----------------
+     The order goes to the database function place_order(), which validates everything and
+     recomputes every price from the catalogue — the prices sent from this page are never trusted. */
+  const WA = String(CFG.whatsappNumber || "").replace(/\D/g, "");
+  const canOrderOnline = !!(CFG.supabaseUrl && CFG.supabaseAnonKey);
+  const panel = $(".drawer-panel");
+  if (WA) {
+    $("#checkoutBtn").insertAdjacentHTML("afterend",
+      `<a class="btn btn-ghost btn-block wa-btn" id="waBtn" href="#" target="_blank" rel="noopener noreferrer">${t("wa.button")}</a>`);
+  }
+  panel.insertAdjacentHTML("beforeend", `
+    <form class="checkout" id="checkoutForm" hidden novalidate>
+      <div class="checkout-body">
+        <button type="button" class="reset-link co-back" id="coBack">${t("co.back")}</button>
+        <h4 class="co-title">${t("co.title")}</h4>
+        <label class="co-field"><span>${t("co.name")}</span><input class="input" name="name" autocomplete="name" maxlength="100" required /></label>
+        <label class="co-field"><span>${t("co.phone")}</span><input class="input" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="06 12 34 56 78" dir="ltr" required /></label>
+        <label class="co-field"><span>${t("co.city")}</span><input class="input" name="city" autocomplete="address-level2" maxlength="80" required /></label>
+        <label class="co-field"><span>${t("co.address")}</span><textarea class="input textarea" name="address" rows="2" autocomplete="street-address" maxlength="300" required></textarea></label>
+        <label class="co-field"><span>${t("co.note")}</span><textarea class="input textarea" name="note" rows="2" maxlength="500"></textarea></label>
+        <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <label class="check"><input type="checkbox" name="consent" /><span>${t("co.consent")}</span></label>
+        <p class="co-pay">${t("co.payment")}</p>
+        <p class="co-error" id="coError" role="alert"></p>
+      </div>
+      <div class="checkout-foot">
+        <div class="row"><span>${t("co.totalLabel")}</span><strong id="coTotal"></strong></div>
+        <button class="btn btn-gold btn-block" type="submit" id="coSubmit">${t("co.submit")}</button>
+      </div>
+    </form>
+    <div class="checkout-done" id="checkoutDone" hidden>
+      <div class="done-mark" aria-hidden="true">✓</div>
+      <h4>${t("co.done.title")}</h4>
+      <p id="coDoneText"></p>
+      <a class="btn btn-ghost" id="coDoneWa" href="#" target="_blank" rel="noopener noreferrer" hidden>${t("wa.followUp")}</a>
+      <button class="btn btn-gold" type="button" id="coDoneClose">${t("co.done.close")}</button>
+    </div>`);
+  const coForm = $("#checkoutForm");
+  function setView(v) {
+    $("#drawerItems").hidden = v !== "bag";
+    $(".drawer-foot").hidden = v !== "bag";
+    coForm.hidden = v !== "form";
+    $("#checkoutDone").hidden = v !== "done";
+    if (v === "form") { $("#coTotal").textContent = fmt(orderTotal()); $("#coError").textContent = ""; }
+  }
+  // WhatsApp message with the bag (and order reference once ordered)
+  function waText(ref) {
+    const lines = [t("wa.intro"), ""];
+    bag.filter((i) => !i.unavailable).forEach((i) => {
+      const p = byId(i.pid), opts = p && i.sel ? summaryFor(p, i.sel) : "";
+      lines.push(`• ${[p && p.brand, i.name].filter(Boolean).join(" ")}${opts ? " (" + opts + ")" : ""} × ${i.qty} — ${fmt(i.qty * i.price)}`);
+    });
+    if (gift.on) lines.push(`• ${WRAPS[gift.wrap].name}${WRAPS[gift.wrap].price ? " — " + fmt(WRAPS[gift.wrap].price) : ""}`);
+    lines.push("", `${t("wa.total")}: ${fmt(orderTotal())}`);
+    if (ref) lines.push(`${t("wa.ref")}: ${ref}`);
+    return lines.join("\n");
+  }
+  const waLink = (text) => `https://wa.me/${WA}?text=${encodeURIComponent(text)}`;
+  if (WA) $("#waBtn").addEventListener("click", (e) => {
+    if (!bag.length) { e.preventDefault(); return toast(t("toast.empty")); }
+    e.currentTarget.href = waLink(waText());
+  });
+
   $("#checkoutBtn").addEventListener("click", () => {
     if (!bag.length) return toast(t("toast.empty"));
-    toast(t("toast.checkout"));
+    if (bag.some((i) => i.unavailable)) return toast(t("co.err.items"));
+    if (!canOrderOnline) return toast(t("co.err.generic"));
+    setView("form");
+    $('[name="name"]', coForm).focus();
+  });
+  $("#coBack").addEventListener("click", () => setView("bag"));
+  $("#coDoneClose").addEventListener("click", () => { setView("bag"); closeDrawer(); });
+
+  const PHONE_RE = /^(\+212[5-7][0-9]{8}|0[5-7][0-9]{8})$/;
+  const normPhone = (s) => { let p = String(s).replace(/[\s.()-]/g, ""); if (p.startsWith("00212")) p = "+212" + p.slice(5); return p; };
+  const ERR = {
+    invalid_name: "co.err.name", invalid_phone: "co.err.phone", invalid_city: "co.err.city", invalid_address: "co.err.address",
+    consent_required: "co.err.consent", product_unavailable: "co.err.items", invalid_option: "co.err.items", invalid_items: "co.err.items",
+    too_many_orders: "co.err.tooMany",
+  };
+  let sending = false;
+  coForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (sending) return;
+    const f = (n) => String(coForm.elements[n].value || "").trim();
+    const fail = (k) => { $("#coError").textContent = t(k); };
+    const customer = { name: f("name"), phone: normPhone(f("phone")), city: f("city"), address: f("address"), note: f("note"),
+      lang: LANG, consent: coForm.elements.consent.checked, website: f("website") };
+    if (customer.name.length < 2) return fail("co.err.name");
+    if (!PHONE_RE.test(customer.phone)) return fail("co.err.phone");
+    if (customer.city.length < 2) return fail("co.err.city");
+    if (customer.address.length < 5) return fail("co.err.address");
+    if (!customer.consent) return fail("co.err.consent");
+    if (!bag.length || bag.some((i) => i.unavailable || !i.pid)) return fail("co.err.items");
+    const items = bag.map((i) => ({ pid: i.pid, qty: i.qty, variant: (i.sel && i.sel.variant) || null, size: (i.sel && i.sel.size) || null }));
+    const giftData = gift.on ? { on: true, wrap: gift.wrap, msg: gift.msg, hide: gift.hide } : null;
+    const btn = $("#coSubmit");
+    sending = true; btn.disabled = true; btn.textContent = t("co.sending"); $("#coError").textContent = "";
+    try {
+      const res = await fetch(`${CFG.supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/place_order`, {
+        method: "POST",
+        headers: { apikey: CFG.supabaseAnonKey, Authorization: `Bearer ${CFG.supabaseAnonKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ customer, items, gift: giftData }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ref) return fail(ERR[data.message] || "co.err.generic");
+      const followUp = waText(data.ref);
+      bag = []; saveBag();
+      gift.on = false; gift.msg = ""; paintGift(); saveGift();
+      coForm.reset();
+      $("#coDoneText").textContent = t("co.done.text", data.ref) + " " + t("co.done.total", fmt(data.total));
+      const wa = $("#coDoneWa"); wa.hidden = !WA; if (WA) wa.href = waLink(followUp);
+      setView("done");
+    } catch (err) {
+      fail("co.err.generic");
+    } finally {
+      sending = false; btn.disabled = false; btn.textContent = t("co.submit");
+    }
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeModal(); closeDrawer(); } });
   // keep bag in sync if it changes in another tab

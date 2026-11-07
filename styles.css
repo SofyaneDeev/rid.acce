@@ -619,3 +619,29 @@ html[lang="ar"] .card-brand { font-size: .85rem; }
   .modal-visual.is-photo { padding: 0; }
   .modal-visual.is-photo > img { width: 100%; height: 100%; }
 }
+
+/* =========================================================
+   Checkout (inside the bag drawer)
+   ========================================================= */
+.checkout, .checkout-done { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.checkout-body { flex: 1; overflow-y: auto; padding: 1rem 1.6rem 1.4rem; display: grid; gap: .9rem; align-content: start; }
+.co-back { justify-self: start; }
+.co-title { font-family: var(--serif); font-weight: 400; font-size: 1.4rem; margin: .2rem 0 .2rem; }
+.co-field { display: grid; gap: .35rem; }
+.co-field > span { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.co-field .input { border-radius: 12px; padding: .8rem 1rem; }
+.co-field .textarea { font-family: var(--sans); font-style: normal; min-height: 64px; }
+.co-pay { margin: 0; padding: .8rem 1rem; border: 1px dashed var(--gold-deep); border-radius: 12px; color: var(--gold-2); font-size: .88rem; }
+.co-error { margin: 0; min-height: 1.2em; color: #e07a6a; font-size: .85rem; }
+.checkout-foot { padding: 1.2rem 1.6rem; border-top: 1px solid var(--line); background: var(--bg-2); }
+.checkout-foot .row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: .8rem; font-size: .9rem; }
+.checkout-foot strong { font-family: var(--serif); font-weight: 400; font-size: 1.4rem; color: var(--gold-2); }
+.hp { position: absolute !important; width: 1px; height: 1px; opacity: 0; pointer-events: none; inset-inline-start: -9999px; }
+.checkout-done { align-items: center; justify-content: center; text-align: center; gap: 1rem; padding: 2rem 1.6rem; }
+.checkout-done h4 { font-family: var(--serif); font-weight: 300; font-size: 2rem; margin: 0; }
+.checkout-done p { color: var(--muted); margin: 0; max-width: 320px; }
+.done-mark { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 1.8rem; color: #15120c; background: linear-gradient(135deg, #e6cf9f, #c9a96e); }
+.wa-btn { margin-top: .6rem; border-color: rgba(37, 211, 102, .45); }
+.wa-btn:hover { border-color: #25d366; color: #25d366; }
+.bag-warn { color: #e07a6a !important; }
+html[lang="ar"] .co-field > span { font-size: .88rem; }
