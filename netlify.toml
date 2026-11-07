@@ -1,4 +1,0 @@
-# RID ACCE — Netlify settings (read automatically when the GitHub repo is connected)
-[build]
-  command = "sh build.sh"
-  publish = "deploy"

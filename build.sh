@@ -1,13 +1,13 @@
 #!/bin/sh
 # RID ACCE — builds the public folder "deploy/" with ONLY the files visitors need.
-# Netlify runs this automatically (see netlify.toml). Locally: sh build.sh
+# GitHub Pages runs this automatically (see .github/workflows/pages.yml). Locally: sh build.sh
 set -e
 rm -rf deploy
 mkdir -p deploy
 cp index.html shop.html gifts.html admin.html \
    styles.css admin.css \
    app.js admin.js i18n.js config.js products-seed.js \
-   _headers deploy/
+   deploy/
 cp -r images deploy/
 
 # Safety net: refuse to publish if a secret key ever ends up in the site files
