@@ -28,12 +28,15 @@ create table if not exists public.orders (
   consent       boolean not null default false,
   ip_hash       text,          -- md5 of the connection address, only used for anti-spam
   admin_note    text check (admin_note is null or char_length(admin_note) <= 2000),
+  seen_at       timestamptz,   -- when the admin first saw the order (null = new)
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
 create index if not exists orders_created_idx on public.orders (created_at desc);
 create index if not exists orders_phone_idx   on public.orders (phone, created_at);
 create index if not exists orders_ip_idx      on public.orders (ip_hash, created_at);
+create index if not exists orders_unseen_idx  on public.orders (created_at desc) where seen_at is null;
+alter table public.orders add column if not exists seen_at timestamptz;
 
 drop trigger if exists orders_touch on public.orders;
 create trigger orders_touch before update on public.orders
@@ -113,7 +116,7 @@ begin
 
   -- prices always come from the catalogue, never from the browser
   for it in select value from jsonb_array_elements(items) loop
-    select pr.id, pr.brand, pr.name, pr.price, pr.variants, pr.chain
+    select pr.id, pr.brand, pr.name, pr.price, pr.img, pr.variants, pr.chain
       into p from public.products pr
       where pr.id = it ->> 'pid' and pr.active;
     if not found then raise exception 'product_unavailable'; end if;
@@ -139,6 +142,7 @@ begin
     v_lines := v_lines || jsonb_build_object(
       'pid', p.id, 'brand', p.brand, 'name', p.name ->> 'en', 'name_ar', p.name ->> 'ar',
       'variant', v ->> 'key', 'variant_name', v -> 'name' ->> 'en',
+      'img', coalesce(v -> 'imgs' ->> 0, p.img),
       'size', v_size, 'qty', v_qty, 'unit_price', v_price, 'line_total', v_price * v_qty);
     v_sub := v_sub + v_price * v_qty;
   end loop;

@@ -165,3 +165,13 @@ select.input { appearance: auto; background: var(--bg); }
 .ad-order-foot { display: flex; gap: .6rem; align-items: center; padding: .8rem 1.2rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
 .ad-order-foot textarea { flex: 1; min-width: 200px; min-height: 42px; border-radius: 12px; font-family: var(--sans); font-style: normal; }
 @media (max-width: 760px) { .ad-order-grid { grid-template-columns: 1fr; } }
+
+/* ---------- orders: photos, new vs earlier ---------- */
+.ad-section { font-family: var(--serif); font-weight: 400; font-size: 1.3rem; margin: 1.2rem 0 .2rem; display: flex; align-items: center; gap: .6rem; }
+.ad-section span { font-family: var(--sans); font-size: .75rem; background: var(--bg-3); border-radius: 999px; padding: .1rem .6rem; color: var(--muted); }
+.ad-order.is-fresh { box-shadow: 0 0 0 1px rgba(201, 169, 110, .55), 0 10px 30px -18px rgba(201, 169, 110, .6); }
+.ad-new-tag { display: inline-block; background: #c9a96e; color: #15120c; font-size: .66rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border-radius: 999px; padding: .15rem .55rem; margin-inline-end: .6rem; vertical-align: middle; }
+.ad-items td.ad-item-photo { width: 64px; padding-inline-end: .7rem; }
+.ad-item-photo img, .ad-item-noimg { display: block; width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--photo-bg); }
+.ad-items td { vertical-align: middle; }
+.ad-items em { font-size: .8rem; }

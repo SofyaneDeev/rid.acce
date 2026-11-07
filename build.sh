@@ -6,7 +6,7 @@ rm -rf deploy
 mkdir -p deploy
 cp index.html shop.html gifts.html admin.html \
    styles.css admin.css \
-   app.js admin.js i18n.js config.js products-seed.js \
+   app.js admin.js xlsx.js i18n.js config.js products-seed.js \
    deploy/
 cp -r images deploy/
 

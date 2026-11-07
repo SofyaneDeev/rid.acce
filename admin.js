@@ -73,7 +73,7 @@
     const { data: adminRow } = await sb.from("admins").select("email").maybeSingle();
     $("#notAdmin").hidden = !!adminRow;
     await Promise.all([loadProducts(), loadOrders()]);
-    setInterval(() => { if (!document.hidden && !$("#tabOrders").hidden) loadOrders(); }, 60000);
+    setInterval(() => { if (!document.hidden) loadOrders(); }, 60000);   // keeps the "new orders" badge up to date
   }
 
   /* ---------------- Product list ---------------- */
@@ -403,49 +403,85 @@
     $$(".ad-tab").forEach((x) => x.classList.toggle("active", x === b));
     $("#tabOrders").hidden = b.dataset.tab !== "orders";
     $("#tabProducts").hidden = b.dataset.tab !== "products";
-    if (b.dataset.tab === "orders") loadOrders();
+    if (b.dataset.tab === "orders") loadOrders(); else updateBadge();
   }));
 
   /* ---------------- Orders (cash on delivery) ----------------
-     Everything shown here was typed by customers → always escaped with esc(). */
+     Everything shown here was typed by customers → always escaped with esc().
+     "New" = not yet seen by an admin (seen_at is null). As soon as the Orders tab is
+     open, new orders are marked as seen in the database, but they stay highlighted
+     under "New orders" until the page is reloaded — on the next visit they are "Earlier". */
   const STATUSES = [["new", "New"], ["confirmed", "Confirmed"], ["shipped", "Shipped"], ["delivered", "Delivered"], ["cancelled", "Cancelled"]];
+  const STATUS_NAME = Object.fromEntries(STATUSES);
   const WAHELLO = {
     ar: (o) => `مرحباً ${o.customer_name}، بخصوص طلبك ${o.ref} من RID ACCE`,
     fr: (o) => `Bonjour ${o.customer_name}, au sujet de votre commande RID ACCE ${o.ref}`,
     en: (o) => `Hello ${o.customer_name}, about your RID ACCE order ${o.ref}`,
   };
   const intlPhone = (p) => (String(p).startsWith("+") ? String(p).slice(1) : "212" + String(p).slice(1)).replace(/\D/g, "");
+  // only photos from the site itself or from https (no javascript:, data:, quotes…)
+  const safeImg = (u) => (typeof u === "string" && !u.includes("..") &&
+    (/^https:\/\/[a-z0-9.-]+(:\d+)?\/[^\s"'<>()\\]*$/i.test(u) || /^images\/[a-z0-9._\/-]+$/i.test(u)) ? u : "");
+  // photo of an ordered piece: snapshot saved with the order, else today's catalogue photo
+  const imgFor = (it) => {
+    if (it.img) return safeImg(it.img);
+    const p = products.find((x) => x.id === it.pid);
+    if (!p) return "";
+    const v = (p.variants || []).find((x) => x.key === it.variant) || (p.variants || [])[0];
+    return safeImg((v && v.imgs && v.imgs[0]) || p.img);
+  };
+  const itemsText = (o) => (Array.isArray(o.items) ? o.items : []).map((it) =>
+    `${it.qty} × ${[it.brand, it.name].filter(Boolean).join(" ")}${it.variant_name ? " (" + it.variant_name + ")" : ""}${it.size ? " [" + it.size + "]" : ""} = ${it.line_total}`).join(" | ");
+  const when = (d) => new Date(d).toLocaleString("fr-MA", { dateStyle: "medium", timeStyle: "short" });
   let orders = [];
+  const freshThisVisit = new Set();   // orders that were new when this page was opened
 
   async function loadOrders() {
-    const { data, error } = await sb.from("orders").select("*").order("created_at", { ascending: false }).limit(500);
+    const { data, error } = await sb.from("orders").select("*").order("created_at", { ascending: false }).limit(1000);
     if (error) { toast(explain(error), true); return; }
     orders = data || [];
+    orders.forEach((o) => { if (!o.seen_at) freshThisVisit.add(o.id); });
     $("#oUpdated").textContent = "Updated " + new Date().toLocaleTimeString("fr-MA", { hour: "2-digit", minute: "2-digit" });
     renderOrders();
+    markSeen();
   }
 
-  function renderOrders() {
-    const q = $("#oSearch").value.trim().toLowerCase(), st = $("#oStatus").value;
-    const rows = orders.filter((o) => (!st || o.status === st) &&
-      (!q || [o.ref, o.customer_name, o.phone, o.city].join(" ").toLowerCase().includes(q)));
-    const count = (s) => orders.filter((o) => o.status === s).length;
-    const open = orders.filter((o) => ["new", "confirmed", "shipped"].includes(o.status));
-    $("#orderStats").innerHTML = `<div><b>${count("new")}</b><span>new</span></div><div><b>${open.length}</b><span>in progress</span></div>` +
-      `<div><b>${esc(fmt(open.reduce((a, o) => a + Number(o.total), 0)))}</b><span>to collect</span></div>`;
-    $("#newCount").textContent = count("new");
-    $("#newCount").hidden = !count("new");
-    $("#ordersEmpty").hidden = orders.length > 0;
-    $("#ordersList").innerHTML = rows.map((o) => {
-      const items = (Array.isArray(o.items) ? o.items : []).map((it) => `
-        <tr><td>${esc(it.qty)} ×</td><td>${esc([it.brand, it.name].filter(Boolean).join(" "))}${it.variant_name ? ` <em>· ${esc(it.variant_name)}</em>` : ""}${it.size ? ` <em>· ${esc(it.size)}</em>` : ""}</td><td>${esc(fmt(it.line_total))}</td></tr>`).join("");
-      const g = o.gift;
-      const giftHtml = g ? `<p class="ad-gift">🎁 ${g.wrap === "coffret" ? "Lacquered coffret" : "Signature box"}${g.hide_prices ? " · hide prices" : ""}${g.message ? `<br><span>“${esc(g.message)}”</span>` : ""}</p>` : "";
-      const wa = `https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent((WAHELLO[o.lang] || WAHELLO.ar)(o))}`;
+  // mark unseen orders as seen — only while the Orders tab is actually on screen
+  async function markSeen() {
+    if (document.hidden || $("#tabOrders").hidden) return;
+    const ids = orders.filter((o) => !o.seen_at).map((o) => o.id);
+    if (!ids.length) return;
+    const now = new Date().toISOString();
+    const { error } = await sb.from("orders").update({ seen_at: now }).in("id", ids).is("seen_at", null);
+    if (error) return;   // not critical: they simply stay "new"
+    orders.forEach((o) => { if (ids.includes(o.id)) o.seen_at = now; });
+    updateBadge();
+  }
+  const unseenCount = () => orders.filter((o) => !o.seen_at).length;
+  function updateBadge() {
+    const n = $("#tabOrders").hidden ? unseenCount() : 0;
+    $("#newCount").textContent = n;
+    $("#newCount").hidden = !n;
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) markSeen(); });
+
+  function orderCard(o, fresh) {
+    const items = (Array.isArray(o.items) ? o.items : []).map((it) => {
+      const img = imgFor(it);
       return `
-      <article class="ad-order is-${esc(o.status)}" data-id="${esc(o.id)}">
+        <tr>
+          <td class="ad-item-photo">${img ? `<img src="${esc(img)}" alt="" loading="lazy" />` : `<span class="ad-item-noimg"></span>`}</td>
+          <td><b>${esc(it.qty)} ×</b> ${esc([it.brand, it.name].filter(Boolean).join(" "))}${it.variant_name ? `<br><em>${esc(it.variant_name)}</em>` : ""}${it.size ? ` <em>· ${esc(it.size)}</em>` : ""}</td>
+          <td>${esc(fmt(it.line_total))}</td>
+        </tr>`;
+    }).join("");
+    const g = o.gift;
+    const giftHtml = g ? `<p class="ad-gift">🎁 ${g.wrap === "coffret" ? "Lacquered coffret" : "Signature box"}${g.hide_prices ? " · hide prices" : ""}${g.message ? `<br><span>“${esc(g.message)}”</span>` : ""}</p>` : "";
+    const wa = `https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent((WAHELLO[o.lang] || WAHELLO.ar)(o))}`;
+    return `
+      <article class="ad-order is-${esc(o.status)}${fresh ? " is-fresh" : ""}" data-id="${esc(o.id)}">
         <header class="ad-order-head">
-          <div><b class="ad-ref">${esc(o.ref)}</b><span class="ad-muted"> · ${esc(new Date(o.created_at).toLocaleString("fr-MA", { dateStyle: "medium", timeStyle: "short" }))} · ${esc(String(o.lang).toUpperCase())}</span></div>
+          <div>${fresh ? `<span class="ad-new-tag">New</span>` : ""}<b class="ad-ref">${esc(o.ref)}</b><span class="ad-muted"> · ${esc(when(o.created_at))} · ${esc(String(o.lang).toUpperCase())}</span></div>
           <select class="input ad-select ad-status" data-act="status">${STATUSES.map(([v, n]) => `<option value="${v}" ${v === o.status ? "selected" : ""}>${n}</option>`).join("")}</select>
         </header>
         <div class="ad-order-grid">
@@ -468,10 +504,55 @@
           <button class="btn btn-ghost btn-sm ad-danger" data-act="delete">Delete</button>
         </footer>
       </article>`;
-    }).join("");
+  }
+
+  const filteredOrders = () => {
+    const q = $("#oSearch").value.trim().toLowerCase(), st = $("#oStatus").value;
+    return orders.filter((o) => (!st || o.status === st) &&
+      (!q || [o.ref, o.customer_name, o.phone, o.city].join(" ").toLowerCase().includes(q)));
+  };
+
+  function renderOrders() {
+    const rows = filteredOrders();
+    const fresh = rows.filter((o) => freshThisVisit.has(o.id)), earlier = rows.filter((o) => !freshThisVisit.has(o.id));
+    const open = orders.filter((o) => ["new", "confirmed", "shipped"].includes(o.status));
+    $("#orderStats").innerHTML = `<div><b>${orders.filter((o) => freshThisVisit.has(o.id)).length}</b><span>new</span></div><div><b>${open.length}</b><span>in progress</span></div>` +
+      `<div><b>${esc(fmt(open.reduce((a, o) => a + Number(o.total), 0)))}</b><span>to collect</span></div>`;
+    updateBadge();
+    $("#ordersEmpty").hidden = orders.length > 0;
+    $("#ordersList").innerHTML =
+      (fresh.length ? `<h2 class="ad-section">New orders <span>${fresh.length}</span></h2>` + fresh.map((o) => orderCard(o, true)).join("") : "") +
+      (earlier.length ? `<h2 class="ad-section">${fresh.length ? "Earlier orders" : "Orders"} <span>${earlier.length}</span></h2>` + earlier.map((o) => orderCard(o, false)).join("") : "") +
+      (orders.length && !rows.length ? `<p class="ad-empty">No orders match this search.</p>` : "");
   }
   ["#oSearch", "#oStatus"].forEach((s) => $(s).addEventListener("input", renderOrders));
   $("#oRefresh").addEventListener("click", loadOrders);
+
+  // ---- Excel export (the orders currently listed: search + status filter)
+  $("#oExport").addEventListener("click", () => {
+    const rows = filteredOrders();
+    if (!rows.length) return toast("No orders to export.", true);
+    const header = ["Reference", "Date", "Status", "Customer", "Phone", "City", "Address", "Customer note", "Items",
+      "Pieces", "Subtotal (MAD)", "Gift wrapping", "Wrapping (MAD)", "Gift message", "Hide prices", "Total (MAD)", "Language", "Admin note"];
+    const data = rows.map((o) => {
+      const its = Array.isArray(o.items) ? o.items : [];
+      const g = o.gift || null;
+      return [o.ref, when(o.created_at), STATUS_NAME[o.status] || o.status, o.customer_name, o.phone, o.city, o.address, o.note || "",
+        itemsText(o), its.reduce((a, it) => a + Number(it.qty || 0), 0), Number(o.subtotal),
+        g ? (g.wrap === "coffret" ? "Lacquered coffret" : "Signature box") : "", Number(o.wrap_price), g ? g.message || "" : "",
+        g ? (g.hide_prices ? "Yes" : "No") : "", Number(o.total), String(o.lang).toUpperCase(), o.admin_note || ""];
+    });
+    const bytes = window.RIDXLSX.build([header, ...data], {
+      sheetName: "Orders", widths: [14, 18, 11, 22, 15, 14, 34, 26, 60, 8, 14, 18, 14, 26, 11, 13, 9, 26],
+    });
+    const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `rid-acce-orders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast(`${rows.length} order(s) exported`);
+  });
 
   $("#ordersList").addEventListener("change", async (e) => {
     if (e.target.dataset.act !== "status") return;
