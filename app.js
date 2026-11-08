@@ -971,7 +971,7 @@
       qtyWarn = "";
       if (n > room) {
         n = Math.max(1, room);
-        qtyWarn = Number.isInteger(current.stock) && room < 10 ? t("stock.max", room) : t("qty.max", 10);
+        qtyWarn = room < 10 ? t("stock.notEnough") : t("qty.max", 10);
         toast(qtyWarn);
       }
       modalQty = Math.max(1, n);
@@ -1162,7 +1162,7 @@
     if (soldOut(p)) { toast(t("stock.out")); return; }
     const n = Math.min(10, Math.max(1, Math.floor(item.qty) || 1)), room = roomFor(item.pid);
     if (room <= 0) { toast(t("stock.allInBag")); return; }
-    if (n > room) { toast(t("stock.max", room)); return; }
+    if (n > room) { toast(t("stock.notEnough")); return; }
     const found = bag.find((i) => i.key === item.key);
     if (found) found.qty = Math.min(10, found.qty + n); else bag.push({ ...item, qty: n });
     saveBag();
@@ -1241,7 +1241,7 @@
         <div>
           <h4>${escapeHTML(i.name)}</h4>
           <small>${escapeHTML((i.pid && byId(i.pid) && i.sel ? summaryFor(byId(i.pid), i.sel) : "") || i.sub || subtitle(i.cfg))}${i.engraving ? `<br>${escapeHTML(t("bag.engraved", i.engraving))}` : ""}</small>
-          ${i.overStock && !i.unavailable ? `<small class="bag-warn">${t("stock.max", byId(i.pid).stock)}</small>` : ""}
+          ${i.overStock && !i.unavailable ? `<small class="bag-warn">${t("stock.notEnough")}</small>` : ""}
           ${i.unavailable ? `<small class="bag-warn">${i.soldOut ? t("stock.out") + " — " + t("bag.removeIt") : t("bag.unavailable")}</small>` : ""}
           <div class="qty"><button data-act="dec" data-i="${idx}" aria-label="Decrease">−</button><span>${i.qty}</span><button data-act="inc" data-i="${idx}" aria-label="Increase">+</button></div>
         </div>
