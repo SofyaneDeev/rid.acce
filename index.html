@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body data-page="home">
   <div class="grain" aria-hidden="true"></div>
@@ -96,6 +96,15 @@
           <span class="world-chip" data-i18n="world.gifts">Gifts</span>
         </a>
       </div>
+    </section>
+
+    <!-- ============ SPECIAL OFFERS (shown only when there are discounts or packs) ============ -->
+    <section class="deals" id="deals" hidden>
+      <div class="deals-head">
+        <h2 class="world-title" data-i18n="deals.title">Special offers</h2>
+        <p class="deals-sub" data-i18n="deals.sub">Discounts and packs, for a limited time.</p>
+      </div>
+      <div class="grid" id="dealsGrid"></div>
     </section>
 
     <!-- ============ GIFT FINDER TEASER ============ -->
@@ -229,7 +238,7 @@
 
   <script src="config.js?v=4"></script>
   <script src="products-seed.js?v=1"></script>
-  <script src="i18n.js?v=16"></script>
-  <script src="app.js?v=16"></script>
+  <script src="i18n.js?v=17"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>

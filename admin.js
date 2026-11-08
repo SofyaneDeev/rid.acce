@@ -19,7 +19,7 @@
   const CFG = window.AURELE_CONFIG || {};
   const BUCKET = "product-images";
   const LANGS = [["ar", "العربية", "rtl"], ["fr", "Français", "ltr"], ["en", "English", "ltr"]];
-  const CATS = ["Watches", "Jewellery", "Leather goods", "Eyewear"];
+  const CATS = ["Watches", "Jewellery", "Leather goods", "Eyewear", "Packs"];
   const GENDERS = [["women", "Women"], ["men", "Men"], ["unisex", "Men & women"]];
   const OCCS = [["anniversary", "Anniversary"], ["wedding", "Wedding"], ["graduation", "Graduation"], ["justbecause", "Just because"]];
 
@@ -83,6 +83,9 @@
   const stockState = (p) => !Number.isInteger(p.stock) ? "none" : p.stock === 0 ? "out" : p.stock <= LOW_STOCK ? "low" : "ok";
   const STOCK_LABEL = { none: "not counted", out: "Out of stock", low: "Low stock", ok: "in stock" };
   // "" → null (not counted); otherwise a whole number 0–100000; undefined = invalid
+  // discount = first version's price before discount (variants[].was)
+  const wasOf = (p) => { const v = (p.variants || [])[0]; return v && Number(v.was) > Number(v.price) ? Number(v.was) : 0; };
+  const pctOf = (p) => { const w = wasOf(p); return w ? Math.round((1 - Number(p.price) / w) * 100) : 0; };
   const parseStock = (v) => { v = String(v).trim(); if (v === "") return null; const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= 100000 ? n : undefined; };
   async function loadProducts() {
     const { data, error } = await sb.from("products").select("*").order("sort", { ascending: true }).order("id");
@@ -101,6 +104,7 @@
     const pieces = products.reduce((a, p) => a + (Number.isInteger(p.stock) ? p.stock : 0), 0);
     $("#stats").innerHTML = `<div><b>${products.length}</b><span>products</span></div><div><b>${active}</b><span>visible</span></div>` +
       `<div><b>${pieces}</b><span>pieces in stock</span></div>` +
+      `<div><b>${products.filter((p) => wasOf(p)).length}</b><span>on sale</span></div>` +
       `<div class="${lowN ? "is-warn" : ""}"><b>${lowN}</b><span>low stock</span></div><div class="${outN ? "is-bad" : ""}"><b>${outN}</b><span>out of stock</span></div>`;
     $("#empty").hidden = products.length > 0;
     $("#list").innerHTML = rows.map((p) => {
@@ -113,9 +117,9 @@
           ${p.brand ? `<span class="ad-brand">${esc(p.brand)}</span>` : ""}
           <h3>${esc(titleOf(p))}</h3>
           <p class="ad-muted" dir="rtl">${esc((p.name || {}).ar || "")}</p>
-          <p class="ad-tags"><span>${esc(p.cat)}</span><span>${esc((GENDERS.find((x) => x[0] === p.gender) || [, p.gender])[1])}</span>${versions > 1 ? `<span>${versions} versions</span>` : ""}</p>
+          <p class="ad-tags"><span>${esc(p.cat)}</span><span>${esc((GENDERS.find((x) => x[0] === p.gender) || [, p.gender])[1])}</span>${versions > 1 ? `<span>${versions} versions</span>` : ""}${Array.isArray(p.pack) && p.pack.length ? `<span class="ad-tag-pack">Pack · ${p.pack.reduce((a, c) => a + (c.qty || 1), 0)} pieces</span>` : ""}${wasOf(p) ? `<span class="ad-tag-sale">−${pctOf(p)}%</span>` : ""}</p>
         </div>
-        <div class="ad-price">${fmt(p.price)}</div>
+        <div class="ad-price">${wasOf(p) ? `<s>${fmt(wasOf(p))}</s>` : ""}${fmt(p.price)}</div>
         <label class="ad-stock is-${stockState(p)}" title="Pieces in stock — leave empty if you don't count this product">
           <input class="input" type="number" inputmode="numeric" min="0" max="100000" step="1" data-act="stock" value="${Number.isInteger(p.stock) ? p.stock : ""}" placeholder="—" />
           <small>${STOCK_LABEL[stockState(p)]}</small>
@@ -173,13 +177,13 @@
   let ed = null, isNew = false, edLang = "ar", edStock0 = null;
   const editor = $("#editor");
 
-  const blankVariant = (price) => ({ key: "", name: { ar: "", fr: "", en: "" }, price: price || 0, swatch: "#c9a96e", imgs: [] });
+  const blankVariant = (price) => ({ key: "", name: { ar: "", fr: "", en: "" }, price: price || 0, was: 0, swatch: "#c9a96e", imgs: [] });
   function blankProduct() {
     const maxSort = products.reduce((m, p) => Math.max(m, p.sort || 0), 0);
     return {
       id: "", brand: "", name: tri(), cat: "Watches", gender: "women", price: 0, img: "",
       variants: [blankVariant(0)], chain: [], sub: tri(), description: tri(), specs: { ar: {}, fr: {}, en: {} },
-      occasions: [], limited: null, active: true, sort: maxSort + 10, stock: null,
+      occasions: [], limited: null, active: true, sort: maxSort + 10, stock: null, pack: [],
     };
   }
   const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -190,7 +194,8 @@
     ed.name = tri(ed.name); ed.sub = tri(ed.sub); ed.description = tri(ed.description);
     ed.specs = { ar: (ed.specs || {}).ar || {}, fr: (ed.specs || {}).fr || {}, en: (ed.specs || {}).en || {} };
     if (!Array.isArray(ed.variants) || !ed.variants.length) ed.variants = [{ ...blankVariant(ed.price), imgs: ed.img ? [ed.img] : [] }];
-    ed.variants.forEach((v) => { v.name = tri(v.name); v.imgs = v.imgs || []; });
+    ed.variants.forEach((v) => { v.name = tri(v.name); v.imgs = v.imgs || []; v.was = Number(v.was) > 0 ? Number(v.was) : 0; });
+    ed.pack = Array.isArray(ed.pack) ? ed.pack.filter((c) => c && c.pid).map((c) => ({ pid: c.pid, qty: Math.min(5, Math.max(1, c.qty | 0 || 1)) })) : [];
     ed.limited = tri(ed.limited);
     if (!Number.isInteger(ed.stock)) ed.stock = null;
     edStock0 = ed.stock;
@@ -258,7 +263,8 @@
               ${multi ? `<button type="button" class="ad-link" data-vact="up" ${i ? "" : "disabled"}>↑</button><button type="button" class="ad-link ad-danger" data-vact="remove">Remove version</button>` : ""}
             </div>
             <div class="ad-grid">
-              <label class="ad-field"><span>Price (MAD)</span><input class="input" type="number" min="0" step="10" data-vk="price" value="${esc(v.price)}" /></label>
+              <label class="ad-field"><span>Price (MAD) <em>— what the customer pays</em></span><input class="input" type="number" min="0" step="10" data-vk="price" value="${esc(v.price)}" /></label>
+              <label class="ad-field"><span>Price before discount <em>(optional — shown crossed out)</em></span><input class="input" type="number" min="0" step="10" data-vk="was" value="${v.was ? esc(v.was) : ""}" placeholder="—" /></label>
               ${multi ? `
               <label class="ad-field"><span>Swatch colour</span><input class="input ad-color" type="color" data-vk="swatch" value="${/^#[0-9a-f]{6}$/i.test(v.swatch) ? v.swatch : "#c9a96e"}" /></label>
               ${LANGS.map(([k, n, d]) => `<label class="ad-field"><span>Version name · ${n}</span><input class="input" dir="${d}" data-vn="${k}" value="${esc(v.name[k])}" placeholder="${k === "en" ? "e.g. Two-tone" : ""}" /></label>`).join("")}` : ""}
@@ -280,7 +286,18 @@
           </div>`).join("")}
         </div>
         <button type="button" class="btn btn-ghost btn-sm" id="addVersion">+ Add a version (colour / metal)</button>
+        <div class="ad-discount">
+          <b>Quick discount</b>
+          <span class="ad-muted ad-small">Lowers every version by a percentage and keeps the old price crossed out in the shop.</span>
+          <div class="ad-discount-row">
+            <input class="input" type="number" min="1" max="90" step="1" id="discPct" placeholder="e.g. 20" /><span>%</span>
+            <button type="button" class="btn btn-gold btn-sm" id="discApply">Apply discount</button>
+            ${ed.variants.some((v) => v.was > v.price) ? `<button type="button" class="btn btn-ghost btn-sm" id="discRemove">Remove discount</button>` : ""}
+          </div>
+          ${ed.variants.some((v) => v.was > v.price) ? `<p class="ad-discount-now">Now on sale: <s>${fmt(ed.variants[0].was)}</s> → <b>${fmt(ed.variants[0].price)}</b> (−${Math.round((1 - ed.variants[0].price / ed.variants[0].was) * 100)}%)</p>` : ""}
+        </div>
       </section>
+      ${ed.cat === "Packs" ? packSection() : ""}
 
       <section class="ad-sec">
         <h4>4 · Options &amp; gift finder</h4>
@@ -290,6 +307,33 @@
         </div>
         <p class="ad-label">Suggest this piece in the Gift Finder for: <em>(“Birthday” always includes everything)</em></p>
         <div class="ad-checks">${OCCS.map(([k, n]) => `<label class="ad-check"><input type="checkbox" data-occ="${k}" ${ed.occasions.includes(k) ? "checked" : ""} /><span>${n}</span></label>`).join("")}</div>
+      </section>`;
+  }
+
+  // ---- pack builder (category "Packs")
+  const packPieces = () => products.filter((p) => p.cat !== "Packs" && p.id !== ed.id);
+  function packTotals() {
+    const sep = ed.pack.reduce((a, c) => { const p = products.find((x) => x.id === c.pid); return a + (p ? Number(p.price) * c.qty : 0); }, 0);
+    const price = Number(ed.variants[0] && ed.variants[0].price) || 0;
+    return { sep, price, save: sep - price };
+  }
+  function packSection() {
+    const tot = packTotals();
+    return `
+      <section class="ad-sec ad-pack">
+        <h4>Pack · pieces inside</h4>
+        <p class="ad-muted ad-small">Tick the pieces in this pack. The customer sees them in the product window, and the price of the pieces bought separately is shown crossed out. Selling a pack also takes these pieces out of stock.</p>
+        <div class="ad-pack-list">${packPieces().map((p) => {
+          const c = ed.pack.find((x) => x.pid === p.id);
+          const th = p.img || ((p.variants || [])[0] || { imgs: [] }).imgs[0] || "";
+          return `<label class="ad-pack-item${c ? " on" : ""}">
+            <input type="checkbox" data-pack="${esc(p.id)}" ${c ? "checked" : ""} />
+            <span class="ad-pack-thumb">${th ? `<img src="${esc(th)}" alt="" loading="lazy" />` : ""}</span>
+            <span class="ad-pack-name">${esc(titleOf(p))}<small>${fmt(p.price)}</small></span>
+            ${c ? `<select class="input ad-select" data-packqty="${esc(p.id)}">${[1, 2, 3, 4, 5].map((n) => `<option ${n === c.qty ? "selected" : ""}>${n}</option>`).join("")}</select>` : ""}
+          </label>`;
+        }).join("")}</div>
+        <p class="ad-pack-total" id="packTotal">${ed.pack.length ? `Separately: <s>${fmt(tot.sep)}</s> · Pack price: <b>${fmt(tot.price)}</b> · ${tot.save > 0 ? `customer saves <b>${fmt(tot.save)}</b> (−${Math.round(tot.save / tot.sep * 100)}%)` : `<span class="ad-danger">the pack price should be lower than ${fmt(tot.sep)}</span>`}` : "No pieces selected yet."}</p>
       </section>`;
   }
 
@@ -315,6 +359,7 @@
     } else if (el.dataset.vk || el.dataset.vn) {
       const v = ed.variants[+el.closest("[data-v]").dataset.v];
       if (el.dataset.vk === "price") v.price = Number(el.value) || 0;
+      else if (el.dataset.vk === "was") v.was = Number(el.value) || 0;
       else if (el.dataset.vk === "swatch") v.swatch = el.value;
       else v.name[el.dataset.vn] = el.value;
     } else if (el.dataset.occ) {
@@ -323,6 +368,18 @@
     }
   });
   $("#edBody").addEventListener("change", (e) => {
+    const el = e.target;
+    if (el.dataset.k === "cat") { ed.cat = el.value; renderEditor(); return; }
+    if (el.dataset.pack) {
+      const id = el.dataset.pack;
+      ed.pack = el.checked ? [...ed.pack.filter((c) => c.pid !== id), { pid: id, qty: 1 }] : ed.pack.filter((c) => c.pid !== id);
+      renderEditor(); return;
+    }
+    if (el.dataset.packqty) {
+      const c = ed.pack.find((x) => x.pid === el.dataset.packqty); if (c) c.qty = Math.min(5, Math.max(1, +el.value || 1));
+      renderEditor(); return;
+    }
+    if (el.dataset.vk === "price" && ed.cat === "Packs") { renderEditor(); return; }
     if (e.target.dataset.k === "active" || e.target.dataset.occ) e.target.dispatchEvent(new Event("input", { bubbles: true }));
     if (e.target.matches("[data-upload]")) upload(e.target);
   });
@@ -346,6 +403,19 @@
       if (pact.dataset.pact === "remove") v.imgs.splice(j, 1);
       if (pact.dataset.pact === "first") v.imgs.unshift(v.imgs.splice(j, 1)[0]);
       renderEditor(); return;
+    }
+    if (e.target.id === "discApply") {
+      const pct = Math.round(Number($("#discPct").value));
+      if (!(pct >= 1 && pct <= 90)) { toast("Type a discount between 1 and 90 %.", true); return; }
+      ed.variants.forEach((v) => {
+        const base = v.was > v.price ? v.was : v.price;   // a new discount always starts from the original price
+        v.was = base; v.price = Math.max(1, Math.round(base * (1 - pct / 100)));
+      });
+      renderEditor(); toast(`−${pct}% applied — press Save to publish it.`); return;
+    }
+    if (e.target.id === "discRemove") {
+      ed.variants.forEach((v) => { if (v.was > v.price) v.price = v.was; v.was = 0; });
+      renderEditor(); toast("Discount removed — press Save to publish it."); return;
     }
     if (e.target.id === "addVersion") {
       if (ed.variants.length === 1 && !ed.variants[0].name.en) ed.variants[0].name.en = "Version 1";
@@ -390,6 +460,7 @@
     if (!ed.variants.length || !ed.variants.some((v) => v.imgs.length)) problems.push("at least one photo");
     if (ed.variants.some((v) => !(v.price > 0))) problems.push("a price for every version");
     if (ed.stock === undefined) problems.push("a valid stock (a whole number, or empty)");
+    if (ed.cat === "Packs" && ed.pack.length < 2 && ed.pack.reduce((a, c) => a + c.qty, 0) < 2) problems.push("at least 2 pieces in the pack");
     if (problems.length) { toast("Please add " + problems.join(", ") + ".", true); return; }
 
     const keys = new Set();
@@ -397,7 +468,9 @@
       let key = slug(v.name.en || v.name.fr) || `v${i + 1}`;
       while (keys.has(key)) key += "-" + (i + 1);
       keys.add(key);
-      return { key, name: v.name, price: Number(v.price), swatch: v.swatch || "", imgs: v.imgs };
+      const out = { key, name: v.name, price: Number(v.price), swatch: v.swatch || "", imgs: v.imgs };
+      if (Number(v.was) > Number(v.price)) out.was = Number(v.was);   // price before discount (shown crossed out)
+      return out;
     });
     const limited = ed.limited.ar || ed.limited.fr || ed.limited.en ? ed.limited : null;
     const row = {
@@ -405,6 +478,7 @@
       price: variants[0].price, img: variants[0].imgs[0], variants, chain: ed.chain || [],
       sub: ed.sub, description: ed.description, specs: ed.specs, occasions: ed.occasions,
       limited, active: !!ed.active, sort: ed.sort || 0,
+      pack: ed.cat === "Packs" ? ed.pack : null,
     };
     // only send the stock when it was changed here, so orders placed meanwhile are not overwritten
     if (isNew || ed.stock !== edStock0) row.stock = ed.stock;

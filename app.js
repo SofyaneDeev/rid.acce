@@ -133,7 +133,7 @@
   const str = (v, max = 2000) => (typeof v === "string" ? v.slice(0, max) : v == null ? "" : String(v).slice(0, max));
   const toPrice = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0; };
   const locText = (o, max) => str(loc(o), max);
-  const CATS = ["Watches", "Jewellery", "Leather goods", "Eyewear"], GENDERS = ["men", "women", "unisex"];
+  const CATS = ["Watches", "Jewellery", "Leather goods", "Eyewear", "Packs"], GENDERS = ["men", "women", "unisex"];
   const OCC_KEYS = ["anniversary", "wedding", "graduation", "justbecause"];
   const hydrate = (r) => {
     if (!r || typeof r.id !== "string" || !SAFE_ID.test(r.id)) return null;
@@ -142,10 +142,12 @@
         key: typeof v.key === "string" && SAFE_ID.test(v.key) ? v.key : "v" + (i + 1),
         name: v.name && typeof v.name === "object" ? { ar: str(v.name.ar, 120), fr: str(v.name.fr, 120), en: str(v.name.en, 120) } : str(v.name, 120),
         price: toPrice(v.price) || toPrice(r.price),
+        was: toPrice(v.was),   // price before discount (0 = no discount)
         swatch: safeCss(v.swatch),
         imgs: (Array.isArray(v.imgs) ? v.imgs : []).map(safeUrl).filter(Boolean).slice(0, 12),
       })
       .filter((v) => v && v.imgs.length);
+    variants.forEach((v) => { if (!(v.was > v.price)) v.was = 0; });
     const specsSrc = (r.specs && typeof r.specs === "object" && (r.specs[LANG] || r.specs.en)) || {};
     const specs = Object.fromEntries(Object.entries(specsSrc).slice(0, 20).map(([k, v]) => [str(k, 80), str(v, 300)]));
     return {
@@ -163,6 +165,10 @@
       specs,
       limited: locText(r.limited, 80),
       stock: Number.isInteger(r.stock) && r.stock >= 0 ? r.stock : null,
+      pack: Array.isArray(r.pack) && r.pack.length
+        ? r.pack.filter((c) => c && typeof c.pid === "string" && SAFE_ID.test(c.pid)).slice(0, 12)
+            .map((c) => ({ pid: c.pid, qty: Math.min(5, Math.max(1, parseInt(c.qty, 10) || 1)) }))
+        : null,
     };
   };
   async function loadCatalogue() {
@@ -179,6 +185,12 @@
     return (window.AURELE_SEED || []).filter((r) => r.active !== false).sort((x, y) => (x.sort || 0) - (y.sort || 0)).map(hydrate).filter(Boolean);
   }
   PRODUCTS = await loadCatalogue();
+  // packs: unless the admin set a "before" price, it is the price of the pieces bought separately
+  PRODUCTS.forEach((p) => {
+    if (!p.pack) return;
+    const sep = p.pack.reduce((a, c) => { const q = PRODUCTS.find((x) => x.id === c.pid); return a + (q ? q.price * c.qty : 0); }, 0);
+    p.variants.forEach((v) => { if (!v.was && sep > v.price) v.was = sep; });
+  });
 
   let uid = 0;
   function metalDefs(id, metal) {
@@ -623,15 +635,24 @@
   const params = new URLSearchParams(location.search);
   const byId = (id) => PRODUCTS.find((p) => p.id === id);
   const LOW_STOCK = 3;
-  const soldOut = (p) => !!p && p.stock === 0;
+  const soldOut = (p) => !!p && (p.stock === 0 ||
+    (!!p.pack && p.pack.some((c) => { const q = byId(c.pid); return q && Number.isInteger(q.stock) && q.stock < c.qty; })));
+  // discounts: "was" = price before discount of a version (first version for the card)
+  const wasOf = (p, v) => { v = v || (p.variants || [])[0]; return v && v.was > v.price ? v.was : 0; };
+  const pctOff = (was, price) => (was > price ? Math.round((1 - price / was) * 100) : 0);
+  const isDeal = (p) => !!(wasOf(p) || p.pack);
+  const packCount = (p) => (p.pack || []).reduce((a, c) => a + c.qty, 0);
   const lowLeft = (p) => !!p && Number.isInteger(p.stock) && p.stock > 0 && p.stock <= LOW_STOCK;
   const cardHTML = (p, tag) => `
-    <button class="card${soldOut(p) ? " is-soldout" : ""}" data-id="${escapeHTML(p.id)}" data-cat="${escapeHTML(p.cat)}" data-gender="${escapeHTML(p.gender)}" data-price="${Number(p.price) || 0}">
-      ${soldOut(p) ? `<span class="card-tag card-out">${escapeHTML(t("stock.out"))}</span>` : tag ? `<span class="card-tag">${escapeHTML(tag)}</span>` : p.limited ? `<span class="card-tag">${escapeHTML(t("tag.limited", p.limited))}</span>` : ""}
+    <button class="card${soldOut(p) ? " is-soldout" : ""}${isDeal(p) ? " is-deal" : ""}" data-id="${escapeHTML(p.id)}" data-cat="${escapeHTML(p.cat)}" data-gender="${escapeHTML(p.gender)}" data-price="${Number(p.price) || 0}" data-deal="${isDeal(p) ? 1 : 0}">
+      ${soldOut(p) ? `<span class="card-tag card-out">${escapeHTML(t("stock.out"))}</span>`
+        : p.pack ? `<span class="card-tag card-pack">${escapeHTML(t("deal.pack"))}${wasOf(p) ? ` <bdi dir="ltr">−${pctOff(wasOf(p), (p.variants[0] || p).price)}%</bdi>` : ""}</span>`
+        : wasOf(p) ? `<span class="card-tag card-sale"><bdi dir="ltr">−${pctOff(wasOf(p), (p.variants[0] || p).price)}%</bdi></span>` : tag ? `<span class="card-tag">${escapeHTML(tag)}</span>` : p.limited ? `<span class="card-tag">${escapeHTML(t("tag.limited", p.limited))}</span>` : ""}
       <span class="card-gender">${t("cat." + p.cat)}</span>
       <div class="card-visual${p.kind === "photo" ? " is-photo" : ""}">${render(p)}</div>
       ${p.brand ? `<span class="card-brand">${escapeHTML(p.brand)}</span>` : ""}
-      <div class="card-row"><h3>${escapeHTML(p.name)}</h3><span class="price">${fmt(p.price)}</span></div>
+      <div class="card-row"><h3>${escapeHTML(p.name)}</h3><span class="price">${wasOf(p) ? `<s class="was">${fmt(wasOf(p))}</s>` : ""}${fmt(p.price)}</span></div>
+      ${p.pack ? `<span class="card-packline">${escapeHTML(t("deal.includes", packCount(p)))}</span>` : ""}
       ${lowLeft(p) ? `<span class="card-low">${escapeHTML(t("stock.left", p.stock))}</span>` : ""}
       <p>${escapeHTML(subtitle(p))}</p>
     </button>`;
@@ -679,6 +700,11 @@
   if (teaser) teaser.innerHTML = giftBoxSVG();
 
   /* For Him / For Her tiles use fixed lifestyle photos (images/brand/), set in the HTML. */
+  const dealsGrid = $("#dealsGrid");
+  if (dealsGrid) {
+    const deals = PRODUCTS.filter((p) => isDeal(p) && !soldOut(p));
+    if (deals.length) { dealsGrid.innerHTML = deals.slice(0, 8).map((p) => cardHTML(p)).join(""); $("#deals").hidden = false; }
+  }
 
   /* ---------------- Shop page ---------------- */
   const grid = $("#grid");
@@ -688,17 +714,23 @@
   }]));
   const filter = {
     gender: ["men", "women"].includes(params.get("g")) ? params.get("g") : null,
-    cat: ["Watches", "Jewellery", "Leather goods", "Eyewear"].includes(params.get("c")) ? params.get("c") : "all",
+    cat: ["Watches", "Jewellery", "Leather goods", "Eyewear", "Packs", "deals"].includes(params.get("c")) ? params.get("c") : "all",
   };
 
   function applyFilter() {
     let n = 0;
     $$(".card", grid).forEach((c) => {
-      const show = (c.dataset.gender === filter.gender || c.dataset.gender === "unisex") && (filter.cat === "all" || c.dataset.cat === filter.cat);
+      const show = (c.dataset.gender === filter.gender || c.dataset.gender === "unisex") &&
+        (filter.cat === "all" || (filter.cat === "deals" ? c.dataset.deal === "1" : c.dataset.cat === filter.cat));
       c.classList.toggle("hide", !show);
       if (show) { n++; c.classList.add("in"); }
     });
     $$("#catFilters .filter").forEach((b) => b.classList.toggle("active", b.dataset.cat === filter.cat));
+    // "Packs" and "Offers" only appear when there is something to show
+    const mine = PRODUCTS.filter((p) => p.gender === filter.gender || p.gender === "unisex");
+    const pp = $('#catFilters [data-cat="Packs"]'), dd = $('#catFilters [data-cat="deals"]');
+    if (pp) pp.hidden = !mine.some((p) => p.pack) && filter.cat !== "Packs";
+    if (dd) dd.hidden = !mine.some(isDeal) && filter.cat !== "deals";
     $("#resultCount").textContent = countLabel(n);
     $("#listTitle").textContent = `${t(filter.cat === "all" ? "list.all" : "cat." + filter.cat)} ${t("for." + filter.gender)}`;
     $("#gridEmpty").hidden = n > 0;
@@ -895,7 +927,11 @@
       });
     });
     const price = fmt(modalPrice());
-    $("#modalPrice").textContent = price;
+    const vNow = v || (now.variants || [])[0], wasNow = vNow ? wasOf(now, vNow) : 0;
+    $("#modalPrice").innerHTML = (wasNow ? `<s>${escapeHTML(fmt(wasNow))}</s> ` : "") + escapeHTML(price) +
+      (wasNow ? ` <span class="save-badge" dir="ltr">−${pctOff(wasNow, vNow.price)}%</span>` : "");
+    $("#modalSave").hidden = !wasNow;
+    if (wasNow) $("#modalSave").textContent = t("deal.save", fmt((wasNow - vNow.price) * modalQty));
     $("#modalBuyPrice").textContent = fmt(modalPrice() * modalQty);
     $("#modalBuyNote").textContent = isCustomised() ? t("buy.custom") : t("buy.asShown");
     $("#modalReset").hidden = !isCustomised();
@@ -922,6 +958,8 @@
   }
 
   if (modal) {
+    $("#modalPrice").insertAdjacentHTML("afterend", `<p class="modal-save" id="modalSave" hidden></p>`);
+    $("#modalDesc").insertAdjacentHTML("afterend", `<div class="modal-pack" id="modalPack" hidden></div>`);
     $("#modalAdd").insertAdjacentHTML("beforebegin", `
       <div class="qty-pick" id="modalQty" role="group" aria-label="${escapeHTML(t("qty.label"))}">
         <button type="button" data-q="-1" aria-label="−">−</button>
@@ -955,6 +993,17 @@
       $("#modalCat").textContent = (p.brand ? p.brand + " · " : "") + `${t("cat." + p.cat)} · ${t("gender." + p.gender)}` + (p.limited ? " · " + p.limited : "");
       $("#modalName").textContent = p.name;
       $("#modalDesc").textContent = p.desc + (p.limited ? t("modal.limitedNote") : "");
+      const packBox = $("#modalPack");
+      packBox.hidden = !p.pack;
+      if (p.pack) {
+        const pieces = p.pack.map((c) => ({ c, q: byId(c.pid) })).filter((x) => x.q);
+        const sep = pieces.reduce((a, x) => a + x.q.price * x.c.qty, 0);
+        packBox.innerHTML = `<p class="pack-head">${escapeHTML(t("deal.packTitle"))}</p><ul class="pack-list">${pieces.map(({ c, q }) => `
+          <li><span class="pack-img">${q.img ? `<img src="${escapeHTML(q.img)}" alt="" loading="lazy" />` : ""}</span>
+            <span class="pack-name">${c.qty > 1 ? `${c.qty} × ` : ""}${escapeHTML(q.name)}${q.brand ? `<small>${escapeHTML(q.brand)}</small>` : ""}</span>
+            <span class="pack-price">${escapeHTML(fmt(q.price * c.qty))}</span></li>`).join("")}</ul>
+          ${sep > p.price ? `<p class="pack-sep">${escapeHTML(t("deal.separately", fmt(sep)))}</p>` : ""}`;
+      }
       $("#modalSpecs").innerHTML = Object.entries(p.specs).map(([k, v]) => `<dt>${escapeHTML(k)}</dt><dd>${escapeHTML(v)}</dd>`).join("");
       buildOptionsUI();
       updateModal();
@@ -1103,12 +1152,18 @@
   const drawer = $("#drawer");
   function saveBag() { store.set(BAG_KEY, bag); renderBag(); }
   const inBagOf = (pid) => bag.reduce((a, i) => a + (i.pid === pid ? i.qty : 0), 0);
-  const roomFor = (pid) => { const p = pid && byId(pid); return p && Number.isInteger(p.stock) ? p.stock - inBagOf(pid) : 10; };
+  const roomFor = (pid) => {
+    const p = pid && byId(pid); if (!p) return 10;
+    let room = Number.isInteger(p.stock) ? p.stock - inBagOf(pid) : 10;
+    // a pack is limited by the pieces inside it too
+    (p.pack || []).forEach((c) => { const q = byId(c.pid); if (q && Number.isInteger(q.stock)) room = Math.min(room, Math.floor((q.stock - inBagOf(q.id)) / c.qty) - inBagOf(pid)); });
+    return room;
+  };
   function addToBag(item) {
     const p = item.pid && byId(item.pid);
     if (soldOut(p)) { toast(t("stock.out")); return; }
     const n = Math.min(10, Math.max(1, Math.floor(item.qty) || 1)), room = roomFor(item.pid);
-    if (room <= 0) { toast(t("stock.max", p.stock)); return; }
+    if (room <= 0) { toast(t("stock.allInBag")); return; }
     if (n > room) { toast(t("stock.max", room)); return; }
     const found = bag.find((i) => i.key === item.key);
     if (found) found.qty = Math.min(10, found.qty + n); else bag.push({ ...item, qty: n });
@@ -1192,7 +1247,7 @@
           ${i.unavailable ? `<small class="bag-warn">${i.soldOut ? t("stock.out") + " — " + t("bag.removeIt") : t("bag.unavailable")}</small>` : ""}
           <div class="qty"><button data-act="dec" data-i="${idx}" aria-label="Decrease">−</button><span>${i.qty}</span><button data-act="inc" data-i="${idx}" aria-label="Increase">+</button></div>
         </div>
-        <div class="right"><strong>${fmt(i.price * i.qty)}</strong><button class="remove" data-act="rm" data-i="${idx}">${t("bag.remove")}</button></div>
+        <div class="right">${(() => { const p = i.pid && byId(i.pid); const v = p && ((p.variants || []).find((x) => x.key === (i.sel && i.sel.variant)) || (p.variants || [])[0]); return v && v.was > v.price ? `<s class="was">${fmt(v.was * i.qty)}</s>` : ""; })()}<strong>${fmt(i.price * i.qty)}</strong><button class="remove" data-act="rm" data-i="${idx}">${t("bag.remove")}</button></div>
       </div>`).join("");
     collectHands();
   }
@@ -1201,7 +1256,7 @@
     if (!b) return;
     const i = +b.dataset.i;
     if (b.dataset.act === "inc") {
-      if (roomFor(bag[i].pid) <= 0) { const p = byId(bag[i].pid); toast(t("stock.max", p ? p.stock : 0)); return; }
+      if (roomFor(bag[i].pid) <= 0) { toast(t("stock.allInBag")); return; }
       bag[i].qty = Math.min(10, bag[i].qty + 1);
     }
     if (b.dataset.act === "dec") bag[i].qty = Math.max(1, bag[i].qty - 1);

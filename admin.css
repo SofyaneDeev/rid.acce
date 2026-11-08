@@ -189,3 +189,25 @@ select.input { appearance: auto; background: var(--bg); }
 .ad-stock.is-out .input { border-color: rgba(224, 122, 106, .7); }
 .ad-stats .is-warn b { color: #e0a84a; }
 .ad-stats .is-bad b { color: #e07a6a; }
+
+/* ---------- discounts & packs ---------- */
+.ad-price s { display: block; font-size: .8rem; color: var(--muted); text-align: end; }
+.ad-tags .ad-tag-sale { border-color: #d0634f; color: #d0634f; font-weight: 600; }
+.ad-tags .ad-tag-pack { border-color: var(--gold); color: var(--gold); }
+.ad-discount { margin-top: 1.2rem; padding: 1rem 1.1rem; border: 1px dashed var(--gold-deep); border-radius: 14px; display: grid; gap: .4rem; }
+.ad-discount-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.ad-discount-row .input { width: 96px; }
+.ad-discount-now { margin: .2rem 0 0; font-size: .9rem; }
+.ad-discount-now s { color: var(--muted); }
+.ad-discount-now b { color: #d0634f; }
+.ad-pack-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem; margin-top: .6rem; }
+.ad-pack-item { display: flex; align-items: center; gap: .6rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; transition: border-color .2s, background .2s; }
+.ad-pack-item.on { border-color: var(--gold); background: rgba(201, 169, 110, .1); }
+.ad-pack-thumb { width: 40px; height: 40px; border-radius: 8px; overflow: hidden; background: var(--photo-bg, #f2eee8); flex: 0 0 auto; }
+.ad-pack-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ad-pack-name { flex: 1; font-size: .85rem; line-height: 1.25; }
+.ad-pack-name small { display: block; color: var(--muted); font-size: .75rem; }
+.ad-pack-item select { width: 58px; padding: .3rem; }
+.ad-pack-total { margin: .9rem 0 0; font-size: .92rem; }
+.ad-pack-total s { color: var(--muted); }
+
