@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="ar" dir="rtl" data-theme="dark">
+<html lang="ar" dir="rtl" data-theme="light">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-tGdbsTuS6t1VAuJPRRjXtQLZdSHOsB+51POU/qsLhOw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://afdgokyvhijffygvjqem.supabase.co; connect-src 'self' https://afdgokyvhijffygvjqem.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Z4vJcXo1nuBd4HbMQh7oSeFS3392m74tCaNqXwJExes='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://afdgokyvhijffygvjqem.supabase.co; connect-src 'self' https://afdgokyvhijffygvjqem.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>The Collection — RID ACCE</title>
   <meta name="description" content="Shop RID ACCE: watches, jewellery, accessories, bags and eyewear for men and women." />
   <script>
-    /* language + theme before first paint (Arabic and dark by default) */
+    /* language + theme before first paint (Arabic and light by default) */
     (function () {
-      var d = document.documentElement, l = "ar", t = "dark";
-      try { l = localStorage.getItem("aurele-lang") || "ar"; t = localStorage.getItem("aurele-theme") || "dark"; } catch (e) {}
+      var d = document.documentElement, l = "ar", t = "light";
+      try { l = localStorage.getItem("aurele-lang") || "ar"; t = localStorage.getItem("aurele-theme") || "light"; } catch (e) {}
       if (["ar", "fr", "en"].indexOf(l) < 0) l = "ar";
       d.lang = l; d.dir = l === "ar" ? "rtl" : "ltr"; d.setAttribute("data-theme", t === "light" ? "light" : "dark");
       setTimeout(function () { d.classList.add("i18n-ready"); }, 1500);
@@ -19,16 +19,18 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body data-page="shop" class="inner-page">
   <div class="grain" aria-hidden="true"></div>
 
   <!-- ============ HEADER ============ -->
   <header class="header" id="header">
+    <div class="topbar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11z"/><path d="M13.5 9.5h4l3 3.2v2.8h-7"/><circle cx="6.5" cy="17" r="1.7"/><circle cx="17" cy="17" r="1.7"/></svg><span data-i18n="topbar">Free delivery across Morocco</span></div>
+    <div class="header-row">
     <a href="index.html" class="logo" aria-label="RID ACCE">
-      <span class="logo-mark">R</span><span class="logo-word">RID ACCE</span>
+      <span class="logo-word">RID ACCE</span><span class="logo-orn" aria-hidden="true"></span>
     </a>
     <nav class="nav" id="nav">
       <a href="index.html" data-nav="home" data-i18n="nav.home">Home</a>
@@ -37,7 +39,6 @@
       <a href="gifts.html" data-nav="gifts" data-i18n="nav.gifts">Gifts</a>
     </nav>
     <div class="header-actions">
-      <span class="live-time" id="liveTime" aria-hidden="true">--:--:--</span>
       <div class="lang-switch" role="group" aria-label="Language · اللغة · Langue">
         <button data-lang="ar" lang="ar" title="العربية">ع</button>
         <button data-lang="fr" lang="fr" title="Français">FR</button>
@@ -52,6 +53,7 @@
         <span class="bag-count" id="bagCount">0</span>
       </button>
       <button class="menu-btn" id="menuBtn" aria-label="Menu"><span></span><span></span></button>
+    </div>
     </div>
   </header>
 
@@ -190,7 +192,7 @@
 
   <script src="config.js?v=4"></script>
   <script src="products-seed.js?v=1"></script>
-  <script src="i18n.js?v=12"></script>
-  <script src="app.js?v=12"></script>
+  <script src="i18n.js?v=13"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

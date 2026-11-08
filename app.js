@@ -575,7 +575,7 @@
         g.setAttribute("transform", `rotate(${a} ${g.dataset.cx} ${g.dataset.cy})`);
       });
     }
-    liveTime.textContent = now.toLocaleTimeString("en-GB");
+    if (liveTime) liveTime.textContent = now.toLocaleTimeString("en-GB");
     requestAnimationFrame(tick);
   }
 

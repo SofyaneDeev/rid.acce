@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="ar" dir="rtl" data-theme="dark">
+<html lang="ar" dir="rtl" data-theme="light">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-tGdbsTuS6t1VAuJPRRjXtQLZdSHOsB+51POU/qsLhOw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://afdgokyvhijffygvjqem.supabase.co; connect-src 'self' https://afdgokyvhijffygvjqem.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Z4vJcXo1nuBd4HbMQh7oSeFS3392m74tCaNqXwJExes='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://afdgokyvhijffygvjqem.supabase.co; connect-src 'self' https://afdgokyvhijffygvjqem.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RID ACCE — Watches, Accessories & Bags</title>
   <meta name="description" content="RID ACCE by Hamza Elkrid — watches, jewellery, accessories and bags for men and women. Prices in Moroccan dirhams." />
   <script>
-    /* language + theme before first paint (Arabic and dark by default) */
+    /* language + theme before first paint (Arabic and light by default) */
     (function () {
-      var d = document.documentElement, l = "ar", t = "dark";
-      try { l = localStorage.getItem("aurele-lang") || "ar"; t = localStorage.getItem("aurele-theme") || "dark"; } catch (e) {}
+      var d = document.documentElement, l = "ar", t = "light";
+      try { l = localStorage.getItem("aurele-lang") || "ar"; t = localStorage.getItem("aurele-theme") || "light"; } catch (e) {}
       if (["ar", "fr", "en"].indexOf(l) < 0) l = "ar";
       d.lang = l; d.dir = l === "ar" ? "rtl" : "ltr"; d.setAttribute("data-theme", t === "light" ? "light" : "dark");
       setTimeout(function () { d.classList.add("i18n-ready"); }, 1500);
@@ -19,16 +19,18 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body data-page="home">
   <div class="grain" aria-hidden="true"></div>
 
   <!-- ============ HEADER ============ -->
   <header class="header" id="header">
+    <div class="topbar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11z"/><path d="M13.5 9.5h4l3 3.2v2.8h-7"/><circle cx="6.5" cy="17" r="1.7"/><circle cx="17" cy="17" r="1.7"/></svg><span data-i18n="topbar">Free delivery across Morocco</span></div>
+    <div class="header-row">
     <a href="index.html" class="logo" aria-label="RID ACCE">
-      <span class="logo-mark">R</span><span class="logo-word">RID ACCE</span>
+      <span class="logo-word">RID ACCE</span><span class="logo-orn" aria-hidden="true"></span>
     </a>
     <nav class="nav" id="nav">
       <a href="index.html" data-nav="home" data-i18n="nav.home">Home</a>
@@ -37,7 +39,6 @@
       <a href="gifts.html" data-nav="gifts" data-i18n="nav.gifts">Gifts</a>
     </nav>
     <div class="header-actions">
-      <span class="live-time" id="liveTime" aria-hidden="true">--:--:--</span>
       <div class="lang-switch" role="group" aria-label="Language · اللغة · Langue">
         <button data-lang="ar" lang="ar" title="العربية">ع</button>
         <button data-lang="fr" lang="fr" title="Français">FR</button>
@@ -53,67 +54,46 @@
       </button>
       <button class="menu-btn" id="menuBtn" aria-label="Menu"><span></span><span></span></button>
     </div>
+    </div>
   </header>
 
   <main id="top">
     <!-- ============ HERO ============ -->
-    <section class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow reveal" data-i18n="hero.eyebrow">Watches · Accessories · Bags</p>
-        <h1 class="hero-title reveal" data-i18n-html="hero.title">Time,<br /><em>chosen</em><br />with care.</h1>
-        <p class="hero-sub reveal" data-i18n="hero.sub">A curated selection of watches, jewellery, accessories and bags, for him and for her. Chosen one by one, delivered with care across Morocco.</p>
-        <div class="hero-ctas reveal">
-          <a href="shop.html?g=men" class="btn btn-gold" data-i18n="hero.ctaMen">Shop for him</a>
-          <a href="shop.html?g=women" class="btn btn-gold" data-i18n="hero.ctaWomen">Shop for her</a>
+    <section class="hero2">
+      <div class="hero2-copy">
+        <p class="hero2-eyebrow reveal" data-i18n="h2.eyebrow">Details that make the difference</p>
+        <h1 class="hero2-title reveal" data-i18n-html="h2.title">Elegance <em>made</em> for you</h1>
+        <p class="hero2-sub reveal" data-i18n="h2.sub">Watches and accessories, chosen for a distinctive look every day.</p>
+        <div class="hero2-ctas reveal">
+          <a href="shop.html" class="btn btn-ink" data-i18n="h2.ctaShop">Shop the collection</a>
+          <a href="#world" class="btn btn-line" data-i18n="h2.ctaNew">Discover what's new</a>
         </div>
-        <dl class="hero-stats reveal">
-          <div><dt data-i18n="stats.a.v">Him &amp; Her</dt><dd data-i18n="stats.a.l">Two collections</dd></div>
-          <div><dt data-i18n="stats.b.v">Gift</dt><dd data-i18n="stats.b.l">Wrapping &amp; card</dd></div>
-          <div><dt data-i18n="stats.c.v">MAD</dt><dd data-i18n="stats.c.l">Prices in dirhams</dd></div>
-        </dl>
+        <ul class="hero2-trust reveal">
+          <li><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11z"/><path d="M13.5 9.5h4l3 3.2v2.8h-7"/><circle cx="6.5" cy="17" r="1.7"/><circle cx="17" cy="17" r="1.7"/></svg><span data-i18n="h2.trust1">Free delivery</span></li>
+          <li><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8 7.5 9.5 4.3-1.5 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.3-4.4"/></svg><span data-i18n="h2.trust2">Selected quality</span></li>
+          <li><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 9.5h18M6.5 14.5h4"/></svg><span data-i18n="h2.trust3">Cash on delivery</span></li>
+        </ul>
       </div>
-
-      <div class="hero-visual" id="heroVisual">
-        <div class="halo"></div>
-        <svg class="orbit-text" viewBox="0 0 500 500" aria-hidden="true">
-          <defs><path id="orbitPath" d="M250,250 m-225,0 a225,225 0 1,1 450,0 a225,225 0 1,1 -450,0" /></defs>
-          <text><textPath href="#orbitPath">RID ACCE · MONTRES · ACCESSOIRES · SACS · RID ACCE · WATCHES · ACCESSORIES · BAGS ·</textPath></text>
-        </svg>
-        <div class="hero-watch" id="heroWatch"></div>
-        <p class="hero-caption" data-i18n-html="hero.caption"><span>Live</span> RID ACCE — showing your local time</p>
+      <div class="hero2-photo">
+        <img src="images/brand/hero.webp" alt="" width="950" height="523" fetchpriority="high" decoding="async" />
       </div>
     </section>
 
-    <!-- ============ MARQUEE ============ -->
-    <div class="marquee" aria-hidden="true">
-      <div class="marquee-track">
-        <span data-i18n="mq.1">Watches</span><i>✦</i><span data-i18n="mq.2">Jewellery</span><i>✦</i><span data-i18n="mq.3">Bags &amp; leather</span><i>✦</i><span data-i18n="mq.4">Free delivery across Morocco</span><i>✦</i><span data-i18n="mq.5">Gift wrapping</span><i>✦</i><span data-i18n="mq.6">Prices in dirhams</span><i>✦</i>
-        <span data-i18n="mq.1">Watches</span><i>✦</i><span data-i18n="mq.2">Jewellery</span><i>✦</i><span data-i18n="mq.3">Bags &amp; leather</span><i>✦</i><span data-i18n="mq.4">Free delivery across Morocco</span><i>✦</i><span data-i18n="mq.5">Gift wrapping</span><i>✦</i><span data-i18n="mq.6">Prices in dirhams</span><i>✦</i>
-      </div>
-    </div>
-
-    <!-- ============ CHOOSE: FOR HIM / FOR HER ============ -->
-    <section class="section choose">
-      <div class="choose-head">
-        <p class="eyebrow reveal" data-i18n="choose.eyebrow">The Collection</p>
-        <h2 class="section-title reveal" data-i18n-html="choose.title">Who are you<br /><em>shopping for?</em></h2>
-      </div>
-      <div class="shopby">
-        <a href="shop.html?g=men" class="shop-tile reveal">
-          <img class="tile-photo" src="images/brand/for-him.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async" />
-          <div class="tile-copy">
-            <p class="eyebrow" data-i18n="tile.men.eyebrow">Pour lui</p>
-            <h3 data-i18n="tile.men.title">For Him</h3>
-            <span data-i18n="tile.men.desc">Watches, accessories &amp; bags →</span>
-          </div>
+    <!-- ============ DISCOVER YOUR WORLD ============ -->
+    <section class="world" id="world">
+      <h2 class="world-title reveal" data-i18n="world.title">Discover your world</h2>
+      <div class="world-grid">
+        <a href="shop.html?g=men" class="world-card reveal">
+          <img src="images/brand/world-men.webp" alt="" width="1022" height="374" loading="lazy" decoding="async" />
+          <span class="world-chip" data-i18n="world.men">For him</span>
         </a>
-        <a href="shop.html?g=women" class="shop-tile reveal">
-          <img class="tile-photo" src="images/brand/for-her.webp" alt="" width="1254" height="1254" loading="lazy" decoding="async" />
-          <div class="tile-copy">
-            <p class="eyebrow" data-i18n="tile.women.eyebrow">Pour elle</p>
-            <h3 data-i18n="tile.women.title">For Her</h3>
-            <span data-i18n="tile.women.desc">Watches, jewellery &amp; bags →</span>
-          </div>
+        <a href="shop.html?g=women" class="world-card reveal">
+          <img src="images/brand/world-women.webp" alt="" width="994" height="374" loading="lazy" decoding="async" />
+          <span class="world-chip" data-i18n="world.women">For her</span>
+        </a>
+        <a href="gifts.html" class="world-card reveal">
+          <img src="images/brand/world-gifts.webp" alt="" width="1012" height="374" loading="lazy" decoding="async" />
+          <span class="world-chip" data-i18n="world.gifts">Gifts</span>
         </a>
       </div>
     </section>
@@ -249,7 +229,7 @@
 
   <script src="config.js?v=4"></script>
   <script src="products-seed.js?v=1"></script>
-  <script src="i18n.js?v=12"></script>
-  <script src="app.js?v=12"></script>
+  <script src="i18n.js?v=13"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

@@ -645,3 +645,115 @@ html[lang="ar"] .card-brand { font-size: .85rem; }
 .wa-btn:hover { border-color: #25d366; color: #25d366; }
 .bag-warn { color: #e07a6a !important; }
 html[lang="ar"] .co-field > span { font-size: .88rem; }
+
+/* =========================================================
+   Home redesign — light, editorial (top bar, centred nav,
+   photo hero, "discover your world" cards)
+   ========================================================= */
+:root { --topbar-h: 38px; --ink-bg: #ece6da; --ink-fg: #111; --hero-gold: linear-gradient(180deg, #e6cf9f, #c9a96e 55%, #a9843f); }
+:root[data-theme="light"] { --ink-bg: #17140f; --ink-fg: #f7f3ec; --hero-gold: linear-gradient(180deg, #c9a24f, #94702f 60%, #7a5a20); }
+
+/* header: dark announcement bar + solid row */
+.header, .header.scrolled { display: block; padding: 0; background: var(--bg); backdrop-filter: none; border-bottom: 1px solid var(--line); }
+.topbar {
+  height: var(--topbar-h); display: flex; align-items: center; justify-content: center; gap: .6rem;
+  background: #17140f; color: #efe6d4; font-size: .82rem; font-weight: 400; white-space: nowrap; overflow: hidden;
+  transition: height .4s var(--ease);
+}
+.topbar svg { color: #c9a96e; flex: 0 0 auto; }
+.header.scrolled .topbar { height: 0; }
+.header-row {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1.5rem;
+  padding: 1rem var(--gutter); transition: padding .4s var(--ease);
+}
+.header.scrolled .header-row { padding-top: .8rem; padding-bottom: .8rem; }
+.header .logo { flex-direction: column; align-items: center; gap: .3rem; justify-self: start; }
+.header .logo-word { white-space: nowrap; font-family: "Fraunces", "Times New Roman", serif; font-size: 1.75rem; font-weight: 400; letter-spacing: .03em; line-height: 1; }
+html[lang="ar"] .header .logo-word { letter-spacing: .03em !important; }
+.logo-orn {
+  position: relative; width: 100%; height: 8px;
+  background: linear-gradient(90deg, transparent, var(--gold) 70%) left center / calc(50% - 9px) 1px no-repeat,
+              linear-gradient(270deg, transparent, var(--gold) 70%) right center / calc(50% - 9px) 1px no-repeat;
+}
+.logo-orn::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; background: var(--gold); transform: translate(-50%, -50%) rotate(45deg); }
+.header .nav { justify-self: center; gap: clamp(1.6rem, 3.4vw, 3.4rem); }
+.header .nav a { color: var(--text); font-weight: 500; font-size: .8rem; padding-block: .2rem; }
+html[lang="ar"] .header .nav a { font-size: 1.12rem; }
+.header .nav a::after { height: 2px; bottom: -9px; border-radius: 2px; }
+.header .header-actions { justify-self: end; }
+main { padding-top: var(--topbar-h); }
+
+/* buttons used by the hero */
+.btn-ink { background: var(--ink-bg); color: var(--ink-fg); border-radius: 8px; }
+.btn-ink:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -14px rgba(0, 0, 0, .45); }
+.btn-line { border: 1px solid var(--gold); color: var(--gold); border-radius: 8px; }
+.btn-line:hover { background: var(--gold); color: var(--bg); }
+
+/* hero: copy + full-bleed photo that fades into the page */
+.hero2 {
+  display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.25fr); align-items: stretch;
+  min-height: clamp(460px, 36vw, 600px); padding-top: 84px;
+}
+.hero2-copy { align-self: center; padding: 3rem var(--gutter) 3rem; padding-inline-end: 1rem; position: relative; z-index: 1; }
+.hero2-eyebrow { display: inline-flex; align-items: center; gap: .9rem; margin: 0; color: var(--gold); font-weight: 500; font-size: 1rem; letter-spacing: .04em; }
+.hero2-eyebrow::before, .hero2-eyebrow::after { content: ""; width: 32px; height: 1px; background: currentColor; opacity: .8; }
+.hero2-title {
+  margin: 1rem 0 1.1rem; font-family: var(--serif); font-weight: 400; letter-spacing: -.02em;
+  font-size: clamp(2.6rem, 5.6vw, 5.2rem); line-height: 1.08;
+}
+html[lang="ar"] .hero2-title { font-family: "IBM Plex Sans Arabic", var(--sans); font-weight: 700; font-size: clamp(2.8rem, 6.6vw, 6.2rem); line-height: 1.2; }
+.hero2-title em { font-style: normal; background: var(--hero-gold); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero2-sub { margin: 0 0 2.2rem; font-size: clamp(1rem, 1.5vw, 1.3rem); color: var(--text); opacity: .85; max-width: 34rem; }
+.hero2-ctas { display: flex; flex-wrap: wrap; gap: 1rem; }
+.hero2-ctas .btn { min-width: 200px; padding: 1.05rem 2rem; }
+html[lang="ar"] .hero2 .hero2-ctas .btn { font-size: 1.05rem; font-weight: 600; }
+.hero2-trust { list-style: none; display: flex; margin: 2.6rem 0 0; padding: 0; }
+.hero2-trust li { flex: 1 1 0; max-width: 170px; display: grid; justify-items: center; gap: .45rem; text-align: center; padding: 0 .8rem; font-size: .88rem; font-weight: 500; }
+.hero2-trust li + li { border-inline-start: 1px solid var(--line); }
+.hero2-trust svg { color: var(--gold); }
+html[lang="ar"] .hero2-trust li { font-size: .98rem; }
+.hero2-photo { position: relative; min-height: 420px; }
+.hero2-photo img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 25% center;
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 16%); mask-image: linear-gradient(to left, transparent 0, #000 16%);
+}
+[dir="ltr"] .hero2-photo img { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16%); mask-image: linear-gradient(to right, transparent 0, #000 16%); }
+
+/* discover your world */
+.world { padding: clamp(2.5rem, 5vw, 4rem) var(--gutter) clamp(3rem, 6vw, 5rem); }
+.world-title { display: flex; align-items: center; gap: 1.2rem; margin: 0 0 1.6rem; font-family: var(--serif); font-weight: 400; font-size: clamp(1.8rem, 3.2vw, 2.7rem); line-height: 1.2; }
+html[lang="ar"] .world-title { font-family: "IBM Plex Sans Arabic", var(--sans); font-weight: 700; }
+.world-title::after { content: ""; width: 56px; height: 2px; background: var(--gold); border-radius: 2px; }
+.world-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+/* the card keeps the photo's own ratio so the label always sits on the same spot of the photo */
+.world-card { position: relative; display: block; aspect-ratio: 2.7; border-radius: 14px; overflow: hidden; background: #2a221a; transition: transform .5s var(--ease), box-shadow .5s var(--ease); }
+.world-card img { display: block; width: 100%; height: 100%; object-fit: cover; transition: filter .5s var(--ease); }
+.world-card:hover { transform: translateY(-4px); box-shadow: 0 22px 40px -24px rgba(40, 28, 10, .55); }
+.world-card:hover img { filter: brightness(1.06) saturate(1.05); }
+.world-chip {
+  position: absolute; right: 1.6%; bottom: 6%; width: 29.5%; height: 31%;
+  display: grid; place-items: center; border-radius: 10px; background: rgba(250, 247, 241, .95); color: #15120c;
+  font-weight: 600; font-size: clamp(.82rem, 1.25vw, 1.1rem); box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .35);
+}
+html[lang="ar"] .world-chip { font-size: clamp(.9rem, 1.35vw, 1.2rem); }
+
+@media (max-width: 860px) {
+  .header-row { grid-template-columns: 1fr auto; }
+  .header .logo { align-items: center; }
+  .hero2 { grid-template-columns: 1fr; padding-top: 74px; min-height: 0; }
+  .hero2-photo { order: -1; min-height: 0; aspect-ratio: 950 / 523; }
+  .hero2-photo img, [dir="ltr"] .hero2-photo img { -webkit-mask-image: linear-gradient(to top, transparent 0, #000 22%); mask-image: linear-gradient(to top, transparent 0, #000 22%); }
+  .hero2-copy { padding: .5rem 16px 2rem; text-align: center; }
+  .hero2-ctas, .hero2-trust { justify-content: center; }
+  .world-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  :root { --topbar-h: 34px; }
+  .topbar { font-size: .74rem; }
+  .header .logo-word { display: block; font-size: 1.15rem; white-space: nowrap; }
+  .header-row { padding-left: 16px; padding-right: 16px; gap: .6rem; }
+  .hero2-ctas .btn { min-width: 0; flex: 1 1 140px; padding: .95rem 1rem; }
+  .hero2-trust li { padding: 0 .4rem; font-size: .8rem; }
+  html[lang="ar"] .hero2-trust li { font-size: .86rem; }
+  .world-chip { border-radius: 8px; }
+}
