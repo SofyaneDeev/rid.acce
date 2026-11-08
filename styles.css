@@ -847,3 +847,23 @@ html[lang="ar"] .card .card-tag.card-out { font-size: .82rem; }
 .card-low { display: inline-block; margin-top: .35rem; font-size: .78rem; font-weight: 500; color: #b5662f; }
 :root:not([data-theme="light"]) .card-low { color: #e0a84a; }
 #modalAdd:disabled { background: var(--bg-3); color: var(--muted); box-shadow: none; cursor: not-allowed; transform: none; }
+
+/* ---------- quantity picker (product window) ---------- */
+.qty-pick { display: inline-flex; align-items: center; height: 48px; border: 1px solid var(--line); border-radius: 999px; margin-inline-start: auto; background: var(--bg); }
+:root[data-theme="light"] .qty-pick { border-color: rgba(45, 34, 16, .22); }
+.qty-pick button { width: 42px; height: 100%; font-size: 1.25rem; line-height: 1; color: var(--text); border-radius: 999px; transition: color .2s, opacity .2s; }
+.qty-pick button:hover:not(:disabled) { color: var(--gold); }
+.qty-pick button:disabled { opacity: .3; cursor: not-allowed; }
+.qty-pick input { width: 40px; height: 100%; border: 0; background: transparent; text-align: center; font: inherit; font-size: 1.05rem; font-weight: 600; color: var(--text); -moz-appearance: textfield; appearance: textfield; }
+.qty-pick input::-webkit-inner-spin-button, .qty-pick input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.qty-pick input:focus { outline: none; }
+.qty-pick:focus-within { border-color: var(--gold); }
+.modal-buy small.is-warn { color: #d0634f; }
+@media (max-width: 860px) {
+  .modal-buy { gap: .6rem; }
+  .qty-pick { height: 42px; }
+  .qty-pick button { width: 32px; }
+  .qty-pick input { width: 30px; font-size: .98rem; }
+  .modal-buy .btn { padding: .85rem 1rem; }
+}
+

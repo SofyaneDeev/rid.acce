@@ -872,6 +872,8 @@
       return `<div class="opt-group">${head}<div class="${g.type === "swatch" ? "swatches" : "chips"}">${btns}</div></div>`;
     }).join("") : "";
   }
+  let modalQty = 1, qtyWarn = "";
+  const qtyRoom = () => (current ? Math.max(0, Math.min(10, roomFor(current.id))) : 10);
   function updateModal() {
     const now = configured(), visualBox = $("#modalWatch");
     visualBox.innerHTML = render(now);
@@ -894,7 +896,7 @@
     });
     const price = fmt(modalPrice());
     $("#modalPrice").textContent = price;
-    $("#modalBuyPrice").textContent = price;
+    $("#modalBuyPrice").textContent = fmt(modalPrice() * modalQty);
     $("#modalBuyNote").textContent = isCustomised() ? t("buy.custom") : t("buy.asShown");
     $("#modalReset").hidden = !isCustomised();
     // stock
@@ -903,13 +905,50 @@
     const out = soldOut(current);
     addBtn.disabled = out;
     addBtn.textContent = out ? t("stock.out") : addBtn.dataset.label;
-    if (out) $("#modalBuyNote").textContent = t("stock.out");
-    else if (lowLeft(current)) $("#modalBuyNote").textContent = t("stock.left", current.stock);
+    const room = qtyRoom(), full = !out && room <= 0;
+    if (full) { addBtn.disabled = true; addBtn.textContent = addBtn.dataset.label; }
+    const note = $("#modalBuyNote");
+    if (out) note.textContent = t("stock.out");
+    else if (full) note.textContent = t("stock.allInBag");
+    else if (qtyWarn) note.textContent = qtyWarn;
+    else if (lowLeft(current)) note.textContent = t("stock.left", current.stock);
+    note.classList.toggle("is-warn", out || full || !!qtyWarn);
+    // quantity picker
+    $("#modalQty").hidden = out;
+    $("#modalQtyIn").value = modalQty;
+    $("#modalQtyIn").max = String(Math.max(1, room));
+    $('#modalQty [data-q="-1"]').disabled = modalQty <= 1;
+    $('#modalQty [data-q="1"]').disabled = full || modalQty >= room;
   }
 
   if (modal) {
+    $("#modalAdd").insertAdjacentHTML("beforebegin", `
+      <div class="qty-pick" id="modalQty" role="group" aria-label="${escapeHTML(t("qty.label"))}">
+        <button type="button" data-q="-1" aria-label="−">−</button>
+        <input id="modalQtyIn" type="number" inputmode="numeric" min="1" max="10" value="1" aria-label="${escapeHTML(t("qty.label"))}" />
+        <button type="button" data-q="1" aria-label="+">+</button>
+      </div>`);
+    // asked for more than we have → keep the maximum and say how many are available
+    const setQty = (n) => {
+      const room = qtyRoom();
+      n = Math.floor(Number(n)) || 1;
+      qtyWarn = "";
+      if (n > room) {
+        n = Math.max(1, room);
+        qtyWarn = Number.isInteger(current.stock) && room < 10 ? t("stock.max", room) : t("qty.max", 10);
+        toast(qtyWarn);
+      }
+      modalQty = Math.max(1, n);
+      updateModal();
+    };
+    $("#modalQty").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-q]"); if (!b || b.disabled) return;
+      setQty(modalQty + Number(b.dataset.q));
+    });
+    $("#modalQtyIn").addEventListener("change", (e) => setQty(e.target.value));
     const openModal = (p) => {
       current = p;
+      modalQty = 1; qtyWarn = "";
       groups = optionGroups(p);
       sel = {}; groups.forEach((g) => (sel[g.key] = defaultOf(g, p)));
       base = { ...sel };
@@ -951,6 +990,7 @@
       if (soldOut(current)) return;
       const note = sel.engraving || sel.initials || "";
       addToBag({
+        qty: modalQty,
         key: current.id + "|" + JSON.stringify(sel),
         name: current.name, price: modalPrice(), cfg: configured(),
         sub: selectionSummary() || subtitle(current), engraving: note, pid: current.id, sel: { ...sel },
@@ -1067,11 +1107,13 @@
   function addToBag(item) {
     const p = item.pid && byId(item.pid);
     if (soldOut(p)) { toast(t("stock.out")); return; }
-    if (roomFor(item.pid) <= 0) { toast(t("stock.max", p.stock)); return; }
+    const n = Math.min(10, Math.max(1, Math.floor(item.qty) || 1)), room = roomFor(item.pid);
+    if (room <= 0) { toast(t("stock.max", p.stock)); return; }
+    if (n > room) { toast(t("stock.max", room)); return; }
     const found = bag.find((i) => i.key === item.key);
-    if (found) found.qty++; else bag.push({ ...item, qty: 1 });
+    if (found) found.qty = Math.min(10, found.qty + n); else bag.push({ ...item, qty: n });
     saveBag();
-    toast(t("toast.added", item.name));
+    toast(t("toast.added", n > 1 ? `${n} × ${item.name}` : item.name));
     const c = $("#bagCount"); c.classList.add("bump"); setTimeout(() => c.classList.remove("bump"), 300);
   }
   /* gift options (stored with the bag) */
@@ -1119,6 +1161,8 @@
       i.unavailable = !p || soldOut(p);
       i.soldOut = soldOut(p);
       if (!p) return;
+      // stock went down since it was added: ask the customer to lower the quantity
+      i.overStock = Number.isInteger(p.stock) && p.stock > 0 && inBagOf(p.id) > p.stock;
       const v = (p.variants || []).find((x) => x.key === (i.sel && i.sel.variant)) || (p.variants || [])[0];
       i.price = v ? v.price : p.price;
     });
@@ -1144,6 +1188,7 @@
         <div>
           <h4>${escapeHTML(i.name)}</h4>
           <small>${escapeHTML((i.pid && byId(i.pid) && i.sel ? summaryFor(byId(i.pid), i.sel) : "") || i.sub || subtitle(i.cfg))}${i.engraving ? `<br>${escapeHTML(t("bag.engraved", i.engraving))}` : ""}</small>
+          ${i.overStock && !i.unavailable ? `<small class="bag-warn">${t("stock.max", byId(i.pid).stock)}</small>` : ""}
           ${i.unavailable ? `<small class="bag-warn">${i.soldOut ? t("stock.out") + " — " + t("bag.removeIt") : t("bag.unavailable")}</small>` : ""}
           <div class="qty"><button data-act="dec" data-i="${idx}" aria-label="Decrease">−</button><span>${i.qty}</span><button data-act="inc" data-i="${idx}" aria-label="Increase">+</button></div>
         </div>
@@ -1236,6 +1281,7 @@
   $("#checkoutBtn").addEventListener("click", () => {
     if (!bag.length) return toast(t("toast.empty"));
     if (bag.some((i) => i.unavailable)) return toast(t("co.err.items"));
+    if (bag.some((i) => i.overStock)) return toast(t("co.err.qty"));
     if (!canOrderOnline) return toast(t("co.err.generic"));
     setView("form");
     $('[name="name"]', coForm).focus();
@@ -1264,6 +1310,7 @@
     if (customer.address.length < 5) return fail("co.err.address");
     if (!customer.consent) return fail("co.err.consent");
     if (!bag.length || bag.some((i) => i.unavailable || !i.pid)) return fail("co.err.items");
+    if (bag.some((i) => i.overStock)) return fail("co.err.qty");
     const items = bag.map((i) => ({ pid: i.pid, qty: i.qty, variant: (i.sel && i.sel.variant) || null, size: (i.sel && i.sel.size) || null }));
     const giftData = gift.on ? { on: true, wrap: gift.wrap, msg: gift.msg, hide: gift.hide } : null;
     const btn = $("#coSubmit");
