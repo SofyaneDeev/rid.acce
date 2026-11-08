@@ -1247,7 +1247,7 @@
           ${i.unavailable ? `<small class="bag-warn">${i.soldOut ? t("stock.out") + " — " + t("bag.removeIt") : t("bag.unavailable")}</small>` : ""}
           <div class="qty"><button data-act="dec" data-i="${idx}" aria-label="Decrease">−</button><span>${i.qty}</span><button data-act="inc" data-i="${idx}" aria-label="Increase">+</button></div>
         </div>
-        <div class="right">${(() => { const p = i.pid && byId(i.pid); const v = p && ((p.variants || []).find((x) => x.key === (i.sel && i.sel.variant)) || (p.variants || [])[0]); return v && v.was > v.price ? `<s class="was">${fmt(v.was * i.qty)}</s>` : ""; })()}<strong>${fmt(i.price * i.qty)}</strong><button class="remove" data-act="rm" data-i="${idx}">${t("bag.remove")}</button></div>
+        <div class="right"><strong>${fmt(i.price * i.qty)}</strong><button class="remove" data-act="rm" data-i="${idx}">${t("bag.remove")}</button></div>
       </div>`).join("");
     collectHands();
   }

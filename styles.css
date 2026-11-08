@@ -895,7 +895,6 @@ html[lang="ar"] .card .card-tag.card-out { font-size: .82rem; }
 .pack-name small { display: block; color: var(--muted); font-size: .75rem; }
 .pack-price { color: var(--muted); font-size: .85rem; white-space: nowrap; }
 .pack-sep { margin: .7rem 0 0; font-size: .88rem; color: var(--muted); }
-.bag-item .right .was { display: block; color: var(--muted); font-size: .8rem; text-decoration: line-through; }
 .deals { padding: 0 var(--gutter) clamp(3rem, 6vw, 5rem); }
 .deals-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .4rem 1.2rem; margin-bottom: 1.6rem; }
 .deals-head .world-title { margin: 0; }
