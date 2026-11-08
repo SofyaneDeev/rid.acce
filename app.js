@@ -1147,6 +1147,9 @@
   const BAG_KEY = "aurele-bag-mad";
   try { localStorage.removeItem("aurele-bag"); } catch { /* storage unavailable */ }
   let bag = store.get(BAG_KEY, []);
+  bag = (Array.isArray(bag) ? bag : [])
+    .filter((i) => i && typeof i === "object" && typeof i.key === "string" && (typeof i.pid === "string" || (i.cfg && typeof i.cfg === "object")))
+    .map((i) => ({ ...i, name: typeof i.name === "string" ? i.name : "", qty: Math.min(10, Math.max(1, parseInt(i.qty, 10) || 1)), price: Number(i.price) || 0 }));
   const drawer = $("#drawer");
   function saveBag() { store.set(BAG_KEY, bag); renderBag(); }
   const inBagOf = (pid) => bag.reduce((a, i) => a + (i.pid === pid ? i.qty : 0), 0);
@@ -1235,12 +1238,26 @@
       box.innerHTML = `<div class="drawer-empty"><p>${t("bag.empty.title")}</p><span>${t("bag.empty.sub")}</span><div class="drawer-empty-actions"><a class="btn btn-ghost" href="shop.html">${t("bag.browse")}</a><a class="btn btn-ghost" href="gifts.html">${t("bag.findGift")}</a></div></div>`;
       return;
     }
+    const bagPhoto = (i) => {
+      const p = i.pid && byId(i.pid);
+      if (p) {
+        const v = (p.variants || []).find((x) => x.key === (i.sel && i.sel.variant)) || (p.variants || [])[0];
+        const src = (v && v.imgs && v.imgs[0]) || p.img;
+        if (src) return `<img class="product-photo" src="${escapeHTML(src)}" alt="" loading="lazy" decoding="async" />`;
+      }
+      return i.cfg && typeof i.cfg === "object" ? render(i.cfg) : "";
+    };
+    const bagSub = (i) => {
+      const p = i.pid && byId(i.pid);
+      return (p && i.sel ? summaryFor(p, i.sel) : "") || i.sub || (i.cfg && typeof i.cfg === "object" ? subtitle(i.cfg) : "");
+    };
+    const safeRow = (fn) => { try { return fn(); } catch (err) { console.warn("RID ACCE: bag item could not be drawn", err); return ""; } };
     box.innerHTML = bag.map((i, idx) => `
       <div class="bag-item">
-        <div>${render(i.cfg)}</div>
+        <div>${safeRow(() => bagPhoto(i))}</div>
         <div>
-          <h4>${escapeHTML(i.name)}</h4>
-          <small>${escapeHTML((i.pid && byId(i.pid) && i.sel ? summaryFor(byId(i.pid), i.sel) : "") || i.sub || subtitle(i.cfg))}${i.engraving ? `<br>${escapeHTML(t("bag.engraved", i.engraving))}` : ""}</small>
+          <h4>${escapeHTML(i.name || (byId(i.pid) || {}).name || "")}</h4>
+          <small>${escapeHTML(safeRow(() => bagSub(i)))}${i.engraving ? `<br>${escapeHTML(t("bag.engraved", i.engraving))}` : ""}</small>
           ${i.overStock && !i.unavailable ? `<small class="bag-warn">${t("stock.notEnough")}</small>` : ""}
           ${i.unavailable ? `<small class="bag-warn">${i.soldOut ? t("stock.out") + " — " + t("bag.removeIt") : t("bag.unavailable")}</small>` : ""}
           <div class="qty"><button data-act="dec" data-i="${idx}" aria-label="Decrease">−</button><span>${i.qty}</span><button data-act="inc" data-i="${idx}" aria-label="Increase">+</button></div>
