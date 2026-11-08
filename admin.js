@@ -88,10 +88,49 @@
   const pctOf = (p) => { const w = wasOf(p); return w ? Math.round((1 - Number(p.price) / w) * 100) : 0; };
   const parseStock = (v) => { v = String(v).trim(); if (v === "") return null; const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= 100000 ? n : undefined; };
   async function loadProducts() {
-    const { data, error } = await sb.from("products").select("*").order("sort", { ascending: true }).order("id");
+    const [{ data, error }, { data: cs, error: cErr }] = await Promise.all([
+      sb.from("products").select("*").order("sort", { ascending: true }).order("id"),
+      sb.from("product_costs").select("*"),
+    ]);
     if (error) { toast(explain(error), true); return; }
     products = data || [];
+    costs = cErr ? {} : Object.fromEntries((cs || []).map((c) => [c.product_id, c]));
     renderList();
+    if (typeof renderOrders === "function" && orders.length) renderOrders();
+  }
+
+  /* ---------------- Costs & profit (ADMIN ONLY — stored in product_costs, never in products) ---------------- */
+  let costs = {};
+  const isNum = (v) => v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v)) && Number(v) >= 0;
+  // cost of one piece of a product version; packs = sum of their pieces unless a cost was typed
+  function costOf(pid, vkey, depth = 0) {
+    const c = costs[pid], p = products.find((x) => x.id === pid);
+    if (c) {
+      const vc = c.variant_costs ? c.variant_costs[vkey] : undefined;
+      if (isNum(vc)) return Number(vc);
+      if (isNum(c.cost)) return Number(c.cost);
+    }
+    if (p && Array.isArray(p.pack) && p.pack.length && depth < 1) {
+      let sum = 0;
+      for (const it of p.pack) { const k = costOf(it.pid, null, depth + 1); if (k === null) return null; sum += k * (it.qty || 1); }
+      return sum;
+    }
+    return null;
+  }
+  const deliveryOf = (pid) => { const c = costs[pid]; return c && isNum(c.delivery_cost) ? Number(c.delivery_cost) : null; };
+  const defaultDelivery = () => {
+    const seen = {}; Object.values(costs).forEach((c) => { if (isNum(c.delivery_cost)) seen[c.delivery_cost] = (seen[c.delivery_cost] || 0) + 1; });
+    const best = Object.entries(seen).sort((a, b) => b[1] - a[1])[0];
+    return best ? Number(best[0]) : "";
+  };
+  // order profit = what the customer pays − cost of the pieces − delivery (one delivery per order)
+  function orderMoney(o) {
+    const its = Array.isArray(o.items) ? o.items : [];
+    let cost = 0;
+    for (const it of its) { const k = costOf(it.pid, it.variant); if (k === null) return null; cost += k * Number(it.qty || 1); }
+    const delivery = its.reduce((m, it) => Math.max(m, deliveryOf(it.pid) || 0), 0);
+    const revenue = Number(o.subtotal) + Number(o.wrap_price || 0);
+    return { cost, delivery, profit: revenue - cost - delivery };
   }
 
   function renderList() {
@@ -119,7 +158,12 @@
           <p class="ad-muted" dir="rtl">${esc((p.name || {}).ar || "")}</p>
           <p class="ad-tags"><span>${esc(p.cat)}</span><span>${esc((GENDERS.find((x) => x[0] === p.gender) || [, p.gender])[1])}</span>${versions > 1 ? `<span>${versions} versions</span>` : ""}${Array.isArray(p.pack) && p.pack.length ? `<span class="ad-tag-pack">Pack · ${p.pack.reduce((a, c) => a + (c.qty || 1), 0)} pieces</span>` : ""}${wasOf(p) ? `<span class="ad-tag-sale">−${pctOf(p)}%</span>` : ""}</p>
         </div>
-        <div class="ad-price">${wasOf(p) ? `<s>${fmt(wasOf(p))}</s>` : ""}${fmt(p.price)}</div>
+        <div class="ad-price">${wasOf(p) ? `<s>${fmt(wasOf(p))}</s>` : ""}${fmt(p.price)}${(() => {
+          const k = costOf(p.id, ((p.variants || [])[0] || {}).key);
+          if (k === null) return `<small class="ad-profit">no cost yet</small>`;
+          const pr = Number(p.price) - k - (deliveryOf(p.id) || 0);
+          return `<small class="ad-profit ${pr < 0 ? "neg" : "pos"}">profit ${fmt(pr)}</small>`;
+        })()}</div>
         <label class="ad-stock is-${stockState(p)}" title="Pieces in stock — leave empty if you don't count this product">
           <input class="input" type="number" inputmode="numeric" min="0" max="100000" step="1" data-act="stock" value="${Number.isInteger(p.stock) ? p.stock : ""}" placeholder="—" />
           <small>${STOCK_LABEL[stockState(p)]}</small>
@@ -198,6 +242,12 @@
     ed.pack = Array.isArray(ed.pack) ? ed.pack.filter((c) => c && c.pid).map((c) => ({ pid: c.pid, qty: Math.min(5, Math.max(1, c.qty | 0 || 1)) })) : [];
     ed.limited = tri(ed.limited);
     if (!Number.isInteger(ed.stock)) ed.stock = null;
+    const c0 = costs[ed.id] || {};
+    ed.variants.forEach((v) => {
+      const vc = c0.variant_costs ? c0.variant_costs[v.key] : undefined;
+      v.cost = isNum(vc) ? Number(vc) : isNum(c0.cost) ? Number(c0.cost) : "";
+    });
+    ed.delivery = isNum(c0.delivery_cost) ? Number(c0.delivery_cost) : defaultDelivery();
     edStock0 = ed.stock;
     $("#edKicker").textContent = isNew ? "New product" : "Edit product";
     $("#edDelete").hidden = isNew;
@@ -265,6 +315,8 @@
             <div class="ad-grid">
               <label class="ad-field"><span>Price (MAD) <em>— what the customer pays</em></span><input class="input" type="number" min="0" step="10" data-vk="price" value="${esc(v.price)}" /></label>
               <label class="ad-field"><span>Price before discount <em>(optional — shown crossed out)</em></span><input class="input" type="number" min="0" step="10" data-vk="was" value="${v.was ? esc(v.was) : ""}" placeholder="—" /></label>
+              <label class="ad-field ad-private"><span>🔒 Cost <em>(what you paid for one piece — only you see it)</em></span><input class="input" type="number" min="0" step="1" data-vk="cost" value="${v.cost === "" || v.cost == null ? "" : esc(v.cost)}" placeholder="${ed.cat === "Packs" ? "empty = sum of the pieces" : "—"}" /></label>
+              <p class="ad-profit-line ad-span2" data-profit="${i}">${profitLine(v)}</p>
               ${multi ? `
               <label class="ad-field"><span>Swatch colour</span><input class="input ad-color" type="color" data-vk="swatch" value="${/^#[0-9a-f]{6}$/i.test(v.swatch) ? v.swatch : "#c9a96e"}" /></label>
               ${LANGS.map(([k, n, d]) => `<label class="ad-field"><span>Version name · ${n}</span><input class="input" dir="${d}" data-vn="${k}" value="${esc(v.name[k])}" placeholder="${k === "en" ? "e.g. Two-tone" : ""}" /></label>`).join("")}` : ""}
@@ -286,6 +338,10 @@
           </div>`).join("")}
         </div>
         <button type="button" class="btn btn-ghost btn-sm" id="addVersion">+ Add a version (colour / metal)</button>
+        <div class="ad-grid ad-private-box">
+          <label class="ad-field ad-private"><span>🔒 Delivery cost <em>(what you pay the courier for one order — only you see it)</em></span><input class="input" type="number" min="0" step="1" data-k="delivery" value="${ed.delivery === "" || ed.delivery == null ? "" : esc(ed.delivery)}" placeholder="e.g. 35" /></label>
+          <p class="ad-muted ad-small ad-span2">Cost, delivery cost and profit are saved in a private table: customers never see them.</p>
+        </div>
         <div class="ad-discount">
           <b>Quick discount</b>
           <span class="ad-muted ad-small">Lowers every version by a percentage and keeps the old price crossed out in the shop.</span>
@@ -309,6 +365,24 @@
         <div class="ad-checks">${OCCS.map(([k, n]) => `<label class="ad-check"><input type="checkbox" data-occ="${k}" ${ed.occasions.includes(k) ? "checked" : ""} /><span>${n}</span></label>`).join("")}</div>
       </section>`;
   }
+
+  // ---- profit calculator (editor)
+  function edPackCost() {
+    if (ed.cat !== "Packs" || !ed.pack.length) return null;
+    let sum = 0;
+    for (const c of ed.pack) { const k = costOf(c.pid, null); if (k === null) return null; sum += k * c.qty; }
+    return sum;
+  }
+  function profitLine(v) {
+    const price = Number(v.price) || 0;
+    const cost = isNum(v.cost) ? Number(v.cost) : edPackCost();
+    if (cost === null) return `<span class="ad-muted">Add the cost to see your profit.</span>`;
+    const deliv = isNum(ed.delivery) ? Number(ed.delivery) : 0;
+    const pr = price - cost - deliv, pct = price ? Math.round(pr / price * 100) : 0;
+    return `Sells <b>${fmt(price)}</b> − cost ${fmt(cost)}${isNum(v.cost) ? "" : " (pieces)"} − delivery ${fmt(deliv)} = ` +
+      `<b class="${pr < 0 ? "neg" : "pos"}">profit ${fmt(pr)}</b> <span class="ad-muted">(${pct}% of the price)</span>`;
+  }
+  const refreshProfits = () => $$("[data-profit]").forEach((el) => { const v = ed && ed.variants[+el.dataset.profit]; if (v) el.innerHTML = profitLine(v); });
 
   // ---- pack builder (category "Packs")
   const packPieces = () => products.filter((p) => p.cat !== "Packs" && p.id !== ed.id);
@@ -345,6 +419,7 @@
       if (k === "active") ed.active = el.checked;
       else if (k === "sort") ed.sort = parseInt(el.value, 10) || 0;
       else if (k === "stock") ed.stock = parseStock(el.value);
+      else if (k === "delivery") ed.delivery = el.value === "" ? "" : Number(el.value);
       else if (k === "chain") ed.chain = el.value.split(",").map((x) => x.trim()).filter(Boolean);
       else if (k === "id") ed.id = slug(el.value);
       else ed[k] = el.value;
@@ -360,12 +435,14 @@
       const v = ed.variants[+el.closest("[data-v]").dataset.v];
       if (el.dataset.vk === "price") v.price = Number(el.value) || 0;
       else if (el.dataset.vk === "was") v.was = Number(el.value) || 0;
+      else if (el.dataset.vk === "cost") v.cost = el.value === "" ? "" : Number(el.value);
       else if (el.dataset.vk === "swatch") v.swatch = el.value;
       else v.name[el.dataset.vn] = el.value;
     } else if (el.dataset.occ) {
       const k = el.dataset.occ;
       ed.occasions = el.checked ? [...new Set([...ed.occasions, k])] : ed.occasions.filter((o) => o !== k);
     }
+    refreshProfits();
   });
   $("#edBody").addEventListener("change", (e) => {
     const el = e.target;
@@ -460,14 +537,17 @@
     if (!ed.variants.length || !ed.variants.some((v) => v.imgs.length)) problems.push("at least one photo");
     if (ed.variants.some((v) => !(v.price > 0))) problems.push("a price for every version");
     if (ed.stock === undefined) problems.push("a valid stock (a whole number, or empty)");
+    if (ed.variants.some((v) => v.cost !== "" && v.cost != null && !isNum(v.cost))) problems.push("a valid cost (0 or more)");
+    if (ed.delivery !== "" && ed.delivery != null && !isNum(ed.delivery)) problems.push("a valid delivery cost (0 or more)");
     if (ed.cat === "Packs" && ed.pack.length < 2 && ed.pack.reduce((a, c) => a + c.qty, 0) < 2) problems.push("at least 2 pieces in the pack");
     if (problems.length) { toast("Please add " + problems.join(", ") + ".", true); return; }
 
-    const keys = new Set();
+    const keys = new Set(), costByKey = {};
     const variants = ed.variants.filter((v) => v.imgs.length).map((v, i) => {
       let key = slug(v.name.en || v.name.fr) || `v${i + 1}`;
       while (keys.has(key)) key += "-" + (i + 1);
       keys.add(key);
+      if (isNum(v.cost)) costByKey[key] = Number(v.cost);   // private: goes to product_costs, never into products
       const out = { key, name: v.name, price: Number(v.price), swatch: v.swatch || "", imgs: v.imgs };
       if (Number(v.was) > Number(v.price)) out.was = Number(v.was);   // price before discount (shown crossed out)
       return out;
@@ -485,6 +565,14 @@
     const btn = $("#edSave");
     btn.disabled = true; btn.textContent = "Saving…";
     const { error } = isNew ? await sb.from("products").insert(row) : await sb.from("products").update(row).eq("id", row.id);
+    if (!error) {
+      const costRow = {
+        product_id: row.id, cost: isNum(costByKey[variants[0].key]) ? costByKey[variants[0].key] : null,
+        variant_costs: costByKey, delivery_cost: isNum(ed.delivery) ? Number(ed.delivery) : null,
+      };
+      const { error: cErr } = await sb.from("product_costs").upsert(costRow);
+      if (cErr) toast("Product saved, but the cost could not be saved: " + explain(cErr), true);
+    }
     btn.disabled = false; btn.textContent = "Save product";
     if (error) { toast(explain(error), true); return; }
     toast(isNew ? "Product added to the shop" : "Changes saved");
@@ -603,6 +691,11 @@
             <table>${items}</table>
             ${giftHtml}
             <p class="ad-total">${Number(o.wrap_price) ? `<span class="ad-muted">incl. wrapping ${esc(fmt(o.wrap_price))}</span>` : ""}<b>${esc(fmt(o.total))}</b></p>
+            ${o.status === "cancelled" ? "" : (() => {
+              const m = orderMoney(o);
+              return m ? `<p class="ad-order-profit">🔒 Cost ${esc(fmt(m.cost))} · delivery ${esc(fmt(m.delivery))} · <b class="${m.profit < 0 ? "neg" : "pos"}">profit ${esc(fmt(m.profit))}</b></p>`
+                : `<p class="ad-order-profit ad-muted">🔒 Add the cost of these products to see the profit.</p>`;
+            })()}
           </div>
         </div>
         <footer class="ad-order-foot">
@@ -624,7 +717,12 @@
     const fresh = rows.filter((o) => freshThisVisit.has(o.id)), earlier = rows.filter((o) => !freshThisVisit.has(o.id));
     const open = orders.filter((o) => ["new", "confirmed", "shipped"].includes(o.status));
     $("#orderStats").innerHTML = `<div><b>${orders.filter((o) => freshThisVisit.has(o.id)).length}</b><span>new</span></div><div><b>${open.length}</b><span>in progress</span></div>` +
-      `<div><b>${esc(fmt(open.reduce((a, o) => a + Number(o.total), 0)))}</b><span>to collect</span></div>`;
+      `<div><b>${esc(fmt(open.reduce((a, o) => a + Number(o.total), 0)))}</b><span>to collect</span></div>` +
+      (() => {
+        const done = orders.filter((o) => o.status === "delivered").map(orderMoney).filter(Boolean);
+        const sum = done.reduce((a, m) => a + m.profit, 0);
+        return `<div class="${sum < 0 ? "is-bad" : ""}"><b>${esc(fmt(sum))}</b><span>profit · delivered</span></div>`;
+      })();
     updateBadge();
     $("#ordersEmpty").hidden = orders.length > 0;
     $("#ordersList").innerHTML =
@@ -640,17 +738,19 @@
     const rows = filteredOrders();
     if (!rows.length) return toast("No orders to export.", true);
     const header = ["Reference", "Date", "Status", "Customer", "Phone", "City", "Address", "Customer note", "Items",
-      "Pieces", "Subtotal (MAD)", "Gift wrapping", "Wrapping (MAD)", "Gift message", "Hide prices", "Total (MAD)", "Language", "Admin note"];
+      "Pieces", "Subtotal (MAD)", "Gift wrapping", "Wrapping (MAD)", "Gift message", "Hide prices", "Total (MAD)", "Language", "Admin note",
+      "Cost (MAD)", "Delivery cost (MAD)", "Profit (MAD)"];
     const data = rows.map((o) => {
       const its = Array.isArray(o.items) ? o.items : [];
       const g = o.gift || null;
       return [o.ref, when(o.created_at), STATUS_NAME[o.status] || o.status, o.customer_name, o.phone, o.city, o.address, o.note || "",
         itemsText(o), its.reduce((a, it) => a + Number(it.qty || 0), 0), Number(o.subtotal),
         g ? (g.wrap === "coffret" ? "Lacquered coffret" : "Signature box") : "", Number(o.wrap_price), g ? g.message || "" : "",
-        g ? (g.hide_prices ? "Yes" : "No") : "", Number(o.total), String(o.lang).toUpperCase(), o.admin_note || ""];
+        g ? (g.hide_prices ? "Yes" : "No") : "", Number(o.total), String(o.lang).toUpperCase(), o.admin_note || "",
+        ...(() => { const m = o.status === "cancelled" ? null : orderMoney(o); return m ? [m.cost, m.delivery, m.profit] : ["", "", ""]; })()];
     });
     const bytes = window.RIDXLSX.build([header, ...data], {
-      sheetName: "Orders", widths: [14, 18, 11, 22, 15, 14, 34, 26, 60, 8, 14, 18, 14, 26, 11, 13, 9, 26],
+      sheetName: "Orders", widths: [14, 18, 11, 22, 15, 14, 34, 26, 60, 8, 14, 18, 14, 26, 11, 13, 9, 26, 12, 16, 12],
     });
     const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const a = document.createElement("a");

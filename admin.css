@@ -211,3 +211,13 @@ select.input { appearance: auto; background: var(--bg); }
 .ad-pack-total { margin: .9rem 0 0; font-size: .92rem; }
 .ad-pack-total s { color: var(--muted); }
 
+/* ---------- costs & profit (admin only) ---------- */
+.ad-profit { display: block; font-family: var(--sans); font-size: .72rem; color: var(--muted); text-align: end; margin-top: .15rem; }
+.ad-profit.pos, .ad-profit-line .pos, .ad-order-profit .pos { color: #4f9d62; }
+.ad-profit.neg, .ad-profit-line .neg, .ad-order-profit .neg { color: #d0634f; }
+.ad-private .input { border-style: dashed; }
+.ad-private > span { color: var(--gold); }
+.ad-private-box { margin-top: 1rem; }
+.ad-profit-line { margin: .1rem 0 .3rem; font-size: .88rem; padding: .55rem .8rem; border-radius: 10px; background: var(--bg-3); }
+.ad-order-profit { margin: .5rem 0 0; font-size: .85rem; text-align: end; }
+
