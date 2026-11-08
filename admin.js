@@ -78,6 +78,12 @@
 
   /* ---------------- Product list ---------------- */
   let products = [];
+  // stock: null = not counted, 0 = out of stock, 1–3 = low
+  const LOW_STOCK = 3;
+  const stockState = (p) => !Number.isInteger(p.stock) ? "none" : p.stock === 0 ? "out" : p.stock <= LOW_STOCK ? "low" : "ok";
+  const STOCK_LABEL = { none: "not counted", out: "Out of stock", low: "Low stock", ok: "in stock" };
+  // "" → null (not counted); otherwise a whole number 0–100000; undefined = invalid
+  const parseStock = (v) => { v = String(v).trim(); if (v === "") return null; const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= 100000 ? n : undefined; };
   async function loadProducts() {
     const { data, error } = await sb.from("products").select("*").order("sort", { ascending: true }).order("id");
     if (error) { toast(explain(error), true); return; }
@@ -86,12 +92,16 @@
   }
 
   function renderList() {
-    const q = $("#search").value.trim().toLowerCase(), c = $("#fCat").value, g = $("#fGender").value;
+    const q = $("#search").value.trim().toLowerCase(), c = $("#fCat").value, g = $("#fGender").value, st = $("#fStock").value;
     const rows = products.filter((p) =>
-      (!c || p.cat === c) && (!g || p.gender === g) &&
+      (!c || p.cat === c) && (!g || p.gender === g) && (!st || stockState(p) === st) &&
       (!q || [p.id, p.brand, ...Object.values(p.name || {})].join(" ").toLowerCase().includes(q)));
     const active = products.filter((p) => p.active).length;
-    $("#stats").innerHTML = `<div><b>${products.length}</b><span>products</span></div><div><b>${active}</b><span>visible</span></div><div><b>${products.length - active}</b><span>hidden</span></div>`;
+    const outN = products.filter((p) => stockState(p) === "out").length, lowN = products.filter((p) => stockState(p) === "low").length;
+    const pieces = products.reduce((a, p) => a + (Number.isInteger(p.stock) ? p.stock : 0), 0);
+    $("#stats").innerHTML = `<div><b>${products.length}</b><span>products</span></div><div><b>${active}</b><span>visible</span></div>` +
+      `<div><b>${pieces}</b><span>pieces in stock</span></div>` +
+      `<div class="${lowN ? "is-warn" : ""}"><b>${lowN}</b><span>low stock</span></div><div class="${outN ? "is-bad" : ""}"><b>${outN}</b><span>out of stock</span></div>`;
     $("#empty").hidden = products.length > 0;
     $("#list").innerHTML = rows.map((p) => {
       const thumb = p.img || ((p.variants || [])[0] || { imgs: [] }).imgs[0] || "";
@@ -106,6 +116,10 @@
           <p class="ad-tags"><span>${esc(p.cat)}</span><span>${esc((GENDERS.find((x) => x[0] === p.gender) || [, p.gender])[1])}</span>${versions > 1 ? `<span>${versions} versions</span>` : ""}</p>
         </div>
         <div class="ad-price">${fmt(p.price)}</div>
+        <label class="ad-stock is-${stockState(p)}" title="Pieces in stock — leave empty if you don't count this product">
+          <input class="input" type="number" inputmode="numeric" min="0" max="100000" step="1" data-act="stock" value="${Number.isInteger(p.stock) ? p.stock : ""}" placeholder="—" />
+          <small>${STOCK_LABEL[stockState(p)]}</small>
+        </label>
         <label class="ad-switch" title="Visible in the shop">
           <input type="checkbox" data-act="toggle" ${p.active ? "checked" : ""} /><span></span>
         </label>
@@ -113,7 +127,7 @@
       </article>`;
     }).join("");
   }
-  ["#search", "#fCat", "#fGender"].forEach((s) => $(s).addEventListener("input", renderList));
+  ["#search", "#fCat", "#fGender", "#fStock"].forEach((s) => $(s).addEventListener("input", renderList));
 
   $("#list").addEventListener("click", (e) => {
     const row = e.target.closest(".ad-row"); if (!row) return;
@@ -121,6 +135,18 @@
     if (e.target.closest('[data-act="edit"]')) openEditor(p);
   });
   $("#list").addEventListener("change", async (e) => {
+    if (e.target.dataset.act === "stock") {
+      const id = e.target.closest(".ad-row").dataset.id, p = products.find((x) => x.id === id);
+      const stock = parseStock(e.target.value);
+      const undo = () => { e.target.value = Number.isInteger(p.stock) ? p.stock : ""; };
+      if (stock === undefined) { toast("Stock must be a whole number (0 or more), or empty.", true); undo(); return; }
+      const { error } = await sb.from("products").update({ stock }).eq("id", id);
+      if (error) { toast(explain(error), true); undo(); return; }
+      p.stock = stock;
+      renderList();
+      toast(stock === null ? "Stock not counted for this product" : stock === 0 ? "Marked out of stock" : `Stock saved: ${stock}`);
+      return;
+    }
     if (e.target.dataset.act !== "toggle") return;
     const id = e.target.closest(".ad-row").dataset.id, active = e.target.checked;
     const { error } = await sb.from("products").update({ active }).eq("id", id);
@@ -144,7 +170,7 @@
   });
 
   /* ---------------- Editor ---------------- */
-  let ed = null, isNew = false, edLang = "ar";
+  let ed = null, isNew = false, edLang = "ar", edStock0 = null;
   const editor = $("#editor");
 
   const blankVariant = (price) => ({ key: "", name: { ar: "", fr: "", en: "" }, price: price || 0, swatch: "#c9a96e", imgs: [] });
@@ -153,7 +179,7 @@
     return {
       id: "", brand: "", name: tri(), cat: "Watches", gender: "women", price: 0, img: "",
       variants: [blankVariant(0)], chain: [], sub: tri(), description: tri(), specs: { ar: {}, fr: {}, en: {} },
-      occasions: [], limited: null, active: true, sort: maxSort + 10,
+      occasions: [], limited: null, active: true, sort: maxSort + 10, stock: null,
     };
   }
   const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -166,6 +192,8 @@
     if (!Array.isArray(ed.variants) || !ed.variants.length) ed.variants = [{ ...blankVariant(ed.price), imgs: ed.img ? [ed.img] : [] }];
     ed.variants.forEach((v) => { v.name = tri(v.name); v.imgs = v.imgs || []; });
     ed.limited = tri(ed.limited);
+    if (!Number.isInteger(ed.stock)) ed.stock = null;
+    edStock0 = ed.stock;
     $("#edKicker").textContent = isNew ? "New product" : "Edit product";
     $("#edDelete").hidden = isNew;
     $("#edStatus").textContent = "";
@@ -199,6 +227,7 @@
           <label class="ad-field"><span>Category</span><select class="input" data-k="cat">${CATS.map((c) => `<option ${c === ed.cat ? "selected" : ""}>${c}</option>`).join("")}</select></label>
           <label class="ad-field"><span>For</span><select class="input" data-k="gender">${GENDERS.map(([v, n]) => `<option value="${v}" ${v === ed.gender ? "selected" : ""}>${n}</option>`).join("")}</select></label>
           <label class="ad-field"><span>Display order <em>(small = first)</em></span><input class="input" type="number" data-k="sort" value="${esc(ed.sort)}" /></label>
+          <label class="ad-field"><span>Stock <em>(pieces available — empty = not counted, 0 = out of stock)</em></span><input class="input" type="number" min="0" max="100000" step="1" data-k="stock" value="${ed.stock === null || ed.stock === undefined ? "" : esc(ed.stock)}" placeholder="—" /></label>
           <label class="ad-check"><input type="checkbox" data-k="active" ${ed.active ? "checked" : ""} /><span>Visible in the shop</span></label>
         </div>
       </section>
@@ -271,6 +300,7 @@
       const k = el.dataset.k;
       if (k === "active") ed.active = el.checked;
       else if (k === "sort") ed.sort = parseInt(el.value, 10) || 0;
+      else if (k === "stock") ed.stock = parseStock(el.value);
       else if (k === "chain") ed.chain = el.value.split(",").map((x) => x.trim()).filter(Boolean);
       else if (k === "id") ed.id = slug(el.value);
       else ed[k] = el.value;
@@ -359,6 +389,7 @@
     if (!ed.name.ar && !ed.name.en && !ed.name.fr) problems.push("a name");
     if (!ed.variants.length || !ed.variants.some((v) => v.imgs.length)) problems.push("at least one photo");
     if (ed.variants.some((v) => !(v.price > 0))) problems.push("a price for every version");
+    if (ed.stock === undefined) problems.push("a valid stock (a whole number, or empty)");
     if (problems.length) { toast("Please add " + problems.join(", ") + ".", true); return; }
 
     const keys = new Set();
@@ -375,6 +406,8 @@
       sub: ed.sub, description: ed.description, specs: ed.specs, occasions: ed.occasions,
       limited, active: !!ed.active, sort: ed.sort || 0,
     };
+    // only send the stock when it was changed here, so orders placed meanwhile are not overwritten
+    if (isNew || ed.stock !== edStock0) row.stock = ed.stock;
     const btn = $("#edSave");
     btn.disabled = true; btn.textContent = "Saving…";
     const { error } = isNew ? await sb.from("products").insert(row) : await sb.from("products").update(row).eq("id", row.id);
@@ -561,6 +594,7 @@
     const { error } = await sb.from("orders").update({ status }).eq("id", id);
     if (error) { toast(explain(error), true); return loadOrders(); }
     orders.find((o) => o.id === id).status = status;
+    loadProducts();   // cancelling an order puts its pieces back in stock
     renderOrders();
     toast("Status updated");
   });

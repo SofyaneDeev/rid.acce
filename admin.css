@@ -56,7 +56,7 @@ select.input { appearance: auto; background: var(--bg); }
 /* list */
 .ad-list { display: grid; gap: .7rem; }
 .ad-row {
-  display: grid; grid-template-columns: 72px 1fr auto auto auto; gap: 1.2rem; align-items: center;
+  display: grid; grid-template-columns: 72px 1fr auto auto auto auto; gap: 1.2rem; align-items: center;
   background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: .8rem 1.2rem .8rem .8rem; transition: border-color .3s, opacity .3s;
 }
 .ad-row:hover { border-color: rgba(201, 169, 110, .4); }
@@ -123,6 +123,8 @@ select.input { appearance: auto; background: var(--bg); }
   .ad-switch { grid-area: s; justify-self: end; }
   .ad-price { grid-area: p; }
   .ad-row .btn { grid-area: e; justify-self: end; }
+  .ad-row { grid-template-areas: "t m s" "t p e" "t k k"; }
+  .ad-stock { grid-area: k; flex-direction: row !important; justify-content: flex-start; }
   .ad-grid { grid-template-columns: 1fr; }
   .ad-toolbar-end { margin-inline-start: 0; width: 100%; }
   .ad-toolbar-end .btn { flex: 1; }
@@ -175,3 +177,15 @@ select.input { appearance: auto; background: var(--bg); }
 .ad-item-photo img, .ad-item-noimg { display: block; width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--photo-bg); }
 .ad-items td { vertical-align: middle; }
 .ad-items em { font-size: .8rem; }
+
+/* ---------- stock ---------- */
+.ad-stock { display: flex; flex-direction: column; align-items: center; gap: .3rem .6rem; min-width: 96px; }
+.ad-stock .input { width: 84px; text-align: center; padding: .45rem .5rem; border-radius: 10px; font-variant-numeric: tabular-nums; }
+.ad-stock small { font-size: .7rem; letter-spacing: .04em; color: var(--muted); white-space: nowrap; }
+.ad-stock.is-ok small { color: #6fbf7f; }
+.ad-stock.is-low small { color: #e0a84a; }
+.ad-stock.is-low .input { border-color: rgba(224, 168, 74, .6); }
+.ad-stock.is-out small { color: #e07a6a; font-weight: 600; }
+.ad-stock.is-out .input { border-color: rgba(224, 122, 106, .7); }
+.ad-stats .is-warn b { color: #e0a84a; }
+.ad-stats .is-bad b { color: #e07a6a; }

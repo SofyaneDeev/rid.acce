@@ -836,3 +836,14 @@ html[lang="ar"] .grid .card-row h3 { font-family: "IBM Plex Sans Arabic", var(--
   .sort { width: 100%; justify-content: space-between; }
   .sort select { flex: 1; }
 }
+
+/* ---------- stock ---------- */
+.card.is-soldout .card-visual { opacity: .55; filter: grayscale(.5); }
+.card.is-soldout .price { color: var(--muted) !important; text-decoration: line-through; text-decoration-thickness: 1px; }
+.card .card-tag.card-out, .grid .card:has(.is-photo) .card-tag.card-out {
+  background: #17140f; color: #f3ead8; border: 0; font-family: var(--sans); font-style: normal; font-size: .72rem; letter-spacing: .08em; padding: .3rem .75rem;
+}
+html[lang="ar"] .card .card-tag.card-out { font-size: .82rem; }
+.card-low { display: inline-block; margin-top: .35rem; font-size: .78rem; font-weight: 500; color: #b5662f; }
+:root:not([data-theme="light"]) .card-low { color: #e0a84a; }
+#modalAdd:disabled { background: var(--bg-3); color: var(--muted); box-shadow: none; cursor: not-allowed; transform: none; }

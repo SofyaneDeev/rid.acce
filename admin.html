@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&family=IBM+Plex+Sans+Arabic:wght@300;400;500&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=11" />
-  <link rel="stylesheet" href="admin.css?v=3" />
+  <link rel="stylesheet" href="admin.css?v=4" />
 </head>
 <body class="admin">
   <header class="ad-header">
@@ -119,6 +119,11 @@
         <option value="">Men & women</option>
         <option value="women">Women</option><option value="men">Men</option><option value="unisex">Unisex</option>
       </select>
+      <select class="input ad-select" id="fStock">
+        <option value="">All stock</option>
+        <option value="out">Out of stock</option><option value="low">Low stock (1–3)</option>
+        <option value="ok">In stock</option><option value="none">Not counted</option>
+      </select>
       <div class="ad-toolbar-end">
         <button class="btn btn-ghost btn-sm" id="importSeed">Import starter catalogue</button>
         <button class="btn btn-gold btn-sm" id="newProduct">+ New product</button>
@@ -157,6 +162,6 @@
   <script src="config.js?v=4"></script>
   <script src="products-seed.js?v=1"></script>
   <script src="xlsx.js?v=1"></script>
-  <script src="admin.js?v=5"></script>
+  <script src="admin.js?v=7"></script>
 </body>
 </html>

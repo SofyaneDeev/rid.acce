@@ -162,6 +162,7 @@
       desc: locText(r.description, 2000),
       specs,
       limited: locText(r.limited, 80),
+      stock: Number.isInteger(r.stock) && r.stock >= 0 ? r.stock : null,
     };
   };
   async function loadCatalogue() {
@@ -621,13 +622,17 @@
 
   const params = new URLSearchParams(location.search);
   const byId = (id) => PRODUCTS.find((p) => p.id === id);
+  const LOW_STOCK = 3;
+  const soldOut = (p) => !!p && p.stock === 0;
+  const lowLeft = (p) => !!p && Number.isInteger(p.stock) && p.stock > 0 && p.stock <= LOW_STOCK;
   const cardHTML = (p, tag) => `
-    <button class="card" data-id="${escapeHTML(p.id)}" data-cat="${escapeHTML(p.cat)}" data-gender="${escapeHTML(p.gender)}" data-price="${Number(p.price) || 0}">
-      ${tag ? `<span class="card-tag">${escapeHTML(tag)}</span>` : p.limited ? `<span class="card-tag">${escapeHTML(t("tag.limited", p.limited))}</span>` : ""}
+    <button class="card${soldOut(p) ? " is-soldout" : ""}" data-id="${escapeHTML(p.id)}" data-cat="${escapeHTML(p.cat)}" data-gender="${escapeHTML(p.gender)}" data-price="${Number(p.price) || 0}">
+      ${soldOut(p) ? `<span class="card-tag card-out">${escapeHTML(t("stock.out"))}</span>` : tag ? `<span class="card-tag">${escapeHTML(tag)}</span>` : p.limited ? `<span class="card-tag">${escapeHTML(t("tag.limited", p.limited))}</span>` : ""}
       <span class="card-gender">${t("cat." + p.cat)}</span>
       <div class="card-visual${p.kind === "photo" ? " is-photo" : ""}">${render(p)}</div>
       ${p.brand ? `<span class="card-brand">${escapeHTML(p.brand)}</span>` : ""}
       <div class="card-row"><h3>${escapeHTML(p.name)}</h3><span class="price">${fmt(p.price)}</span></div>
+      ${lowLeft(p) ? `<span class="card-low">${escapeHTML(t("stock.left", p.stock))}</span>` : ""}
       <p>${escapeHTML(subtitle(p))}</p>
     </button>`;
 
@@ -892,6 +897,14 @@
     $("#modalBuyPrice").textContent = price;
     $("#modalBuyNote").textContent = isCustomised() ? t("buy.custom") : t("buy.asShown");
     $("#modalReset").hidden = !isCustomised();
+    // stock
+    const addBtn = $("#modalAdd");
+    if (!addBtn.dataset.label) addBtn.dataset.label = addBtn.textContent;
+    const out = soldOut(current);
+    addBtn.disabled = out;
+    addBtn.textContent = out ? t("stock.out") : addBtn.dataset.label;
+    if (out) $("#modalBuyNote").textContent = t("stock.out");
+    else if (lowLeft(current)) $("#modalBuyNote").textContent = t("stock.left", current.stock);
   }
 
   if (modal) {
@@ -935,6 +948,7 @@
     $("#modalReset").addEventListener("click", () => { sel = { ...base }; buildOptionsUI(); updateModal(); });
     $$("[data-close]", modal).forEach((el) => el.addEventListener("click", closeModal));
     $("#modalAdd").addEventListener("click", () => {
+      if (soldOut(current)) return;
       const note = sel.engraving || sel.initials || "";
       addToBag({
         key: current.id + "|" + JSON.stringify(sel),
@@ -977,7 +991,7 @@
       const occ = OCCASIONS[pick.o], bud = BUDGETS[pick.b];
       const inBud = (p) => p.price >= bud.min && p.price < bud.max;
       const inOcc = (p) => occ.all || p.occasions.includes(pick.o);
-      const forWho = PRODUCTS.filter((p) => p.gender === pick.g || p.gender === "unisex");
+      const forWho = PRODUCTS.filter((p) => (p.gender === pick.g || p.gender === "unisex") && !soldOut(p));
       let picks = forWho.filter((p) => inOcc(p) && inBud(p));
       let note = "";
       if (picks.length < 3) picks = picks.concat(forWho.filter((p) => inBud(p) && !picks.includes(p)));
@@ -1048,7 +1062,12 @@
   let bag = store.get(BAG_KEY, []);
   const drawer = $("#drawer");
   function saveBag() { store.set(BAG_KEY, bag); renderBag(); }
+  const inBagOf = (pid) => bag.reduce((a, i) => a + (i.pid === pid ? i.qty : 0), 0);
+  const roomFor = (pid) => { const p = pid && byId(pid); return p && Number.isInteger(p.stock) ? p.stock - inBagOf(pid) : 10; };
   function addToBag(item) {
+    const p = item.pid && byId(item.pid);
+    if (soldOut(p)) { toast(t("stock.out")); return; }
+    if (roomFor(item.pid) <= 0) { toast(t("stock.max", p.stock)); return; }
     const found = bag.find((i) => i.key === item.key);
     if (found) found.qty++; else bag.push({ ...item, qty: 1 });
     saveBag();
@@ -1097,7 +1116,8 @@
   function syncBagPrices() {
     bag.forEach((i) => {
       const p = i.pid && byId(i.pid);
-      i.unavailable = !p;
+      i.unavailable = !p || soldOut(p);
+      i.soldOut = soldOut(p);
       if (!p) return;
       const v = (p.variants || []).find((x) => x.key === (i.sel && i.sel.variant)) || (p.variants || [])[0];
       i.price = v ? v.price : p.price;
@@ -1124,7 +1144,7 @@
         <div>
           <h4>${escapeHTML(i.name)}</h4>
           <small>${escapeHTML((i.pid && byId(i.pid) && i.sel ? summaryFor(byId(i.pid), i.sel) : "") || i.sub || subtitle(i.cfg))}${i.engraving ? `<br>${escapeHTML(t("bag.engraved", i.engraving))}` : ""}</small>
-          ${i.unavailable ? `<small class="bag-warn">${t("bag.unavailable")}</small>` : ""}
+          ${i.unavailable ? `<small class="bag-warn">${i.soldOut ? t("stock.out") + " — " + t("bag.removeIt") : t("bag.unavailable")}</small>` : ""}
           <div class="qty"><button data-act="dec" data-i="${idx}" aria-label="Decrease">−</button><span>${i.qty}</span><button data-act="inc" data-i="${idx}" aria-label="Increase">+</button></div>
         </div>
         <div class="right"><strong>${fmt(i.price * i.qty)}</strong><button class="remove" data-act="rm" data-i="${idx}">${t("bag.remove")}</button></div>
@@ -1135,7 +1155,10 @@
     const b = e.target.closest("[data-act]");
     if (!b) return;
     const i = +b.dataset.i;
-    if (b.dataset.act === "inc") bag[i].qty = Math.min(10, bag[i].qty + 1);
+    if (b.dataset.act === "inc") {
+      if (roomFor(bag[i].pid) <= 0) { const p = byId(bag[i].pid); toast(t("stock.max", p ? p.stock : 0)); return; }
+      bag[i].qty = Math.min(10, bag[i].qty + 1);
+    }
     if (b.dataset.act === "dec") bag[i].qty = Math.max(1, bag[i].qty - 1);
     if (b.dataset.act === "rm") bag.splice(i, 1);
     saveBag();
@@ -1225,7 +1248,7 @@
   const ERR = {
     invalid_name: "co.err.name", invalid_phone: "co.err.phone", invalid_city: "co.err.city", invalid_address: "co.err.address",
     consent_required: "co.err.consent", product_unavailable: "co.err.items", invalid_option: "co.err.items", invalid_items: "co.err.items",
-    too_many_orders: "co.err.tooMany",
+    too_many_orders: "co.err.tooMany", out_of_stock: "co.err.stock",
   };
   let sending = false;
   coForm.addEventListener("submit", async (e) => {
