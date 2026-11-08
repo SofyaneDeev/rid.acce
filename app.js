@@ -622,7 +622,7 @@
   const params = new URLSearchParams(location.search);
   const byId = (id) => PRODUCTS.find((p) => p.id === id);
   const cardHTML = (p, tag) => `
-    <button class="card" data-id="${escapeHTML(p.id)}" data-cat="${escapeHTML(p.cat)}" data-gender="${escapeHTML(p.gender)}">
+    <button class="card" data-id="${escapeHTML(p.id)}" data-cat="${escapeHTML(p.cat)}" data-gender="${escapeHTML(p.gender)}" data-price="${Number(p.price) || 0}">
       ${tag ? `<span class="card-tag">${escapeHTML(tag)}</span>` : p.limited ? `<span class="card-tag">${escapeHTML(t("tag.limited", p.limited))}</span>` : ""}
       <span class="card-gender">${t("cat." + p.cat)}</span>
       <div class="card-visual${p.kind === "photo" ? " is-photo" : ""}">${render(p)}</div>
@@ -678,7 +678,8 @@
   /* ---------------- Shop page ---------------- */
   const grid = $("#grid");
   const GENDER_COPY = Object.fromEntries(["men", "women"].map((g) => [g, {
-    eyebrow: t(`copy.${g}.eyebrow`), title: t(`copy.${g}.title`), em: t(`copy.${g}.em`), sub: t(`copy.${g}.sub`),
+    eyebrow: t(`edit.${g}.eyebrow`), title: t(`edit.${g}.title`), em: t(`edit.${g}.em`), sub: t(`edit.${g}.sub`),
+    name: t(`nav.${g}`), photo: `images/brand/edit-${g}.webp`,
   }]));
   const filter = {
     gender: ["men", "women"].includes(params.get("g")) ? params.get("g") : null,
@@ -692,16 +693,18 @@
       c.classList.toggle("hide", !show);
       if (show) { n++; c.classList.add("in"); }
     });
-    $$("#genderSeg button").forEach((b) => b.classList.toggle("active", b.dataset.gender === filter.gender));
     $$("#catFilters .filter").forEach((b) => b.classList.toggle("active", b.dataset.cat === filter.cat));
     $("#resultCount").textContent = countLabel(n);
+    $("#listTitle").textContent = `${t(filter.cat === "all" ? "list.all" : "cat." + filter.cat)} ${t("for." + filter.gender)}`;
     $("#gridEmpty").hidden = n > 0;
     const c = GENDER_COPY[filter.gender];
     $("#shopEyebrow").textContent = c.eyebrow;
-    $("#shopTitle").innerHTML = `${c.title}.<br /><em>${c.em}</em>`;
+    $("#shopTitle").textContent = c.title + " ";
+    $("#shopTitle").appendChild(Object.assign(document.createElement("em"), { textContent: c.em }));
     $("#shopSub").textContent = c.sub;
-    $("#crumbGender").textContent = c.title;
-    document.title = `${c.title} — RID ACCE`;
+    $("#crumbGender").textContent = c.name;
+    if (!$("#editPhoto").src.endsWith(c.photo)) $("#editPhoto").src = c.photo;
+    document.title = `${c.name} — RID ACCE`;
     const q = new URLSearchParams({ g: filter.gender });
     if (filter.cat !== "all") q.set("c", filter.cat);
     history.replaceState(null, "", "shop.html?" + q);
@@ -716,10 +719,12 @@
     $("#shopMain").hidden = choosing;
     if (!choosing) {
       grid.innerHTML = PRODUCTS.map((p) => cardHTML(p)).join("");
-      $("#genderSeg").addEventListener("click", (e) => {
-        const b = e.target.closest("button"); if (!b) return;
-        filter.gender = b.dataset.gender; filter.cat = "all"; applyFilter();
-        scrollTo({ top: 0, behavior: "smooth" });
+      $$(".card", grid).forEach((c, i) => (c.dataset.idx = String(i)));
+      // sort: featured (catalogue order) or by price
+      $("#sortSel").addEventListener("change", (e) => {
+        const mode = e.target.value;
+        const key = (c) => mode === "featured" ? +c.dataset.idx : +c.dataset.price;
+        $$(".card", grid).sort((x, y) => mode === "desc" ? key(y) - key(x) : key(x) - key(y)).forEach((c) => grid.appendChild(c));
       });
       $("#catFilters").addEventListener("click", (e) => {
         const b = e.target.closest(".filter"); if (!b) return;

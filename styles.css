@@ -757,3 +757,82 @@ html[lang="ar"] .world-chip { font-size: clamp(.9rem, 1.35vw, 1.2rem); }
   html[lang="ar"] .hero2-trust li { font-size: .86rem; }
   .world-chip { border-radius: 8px; }
 }
+
+/* =========================================================
+   Shop page redesign — banner "edit", pills, sort, clean cards
+   ========================================================= */
+.shop2 { padding: calc(84px + 1rem) var(--gutter) clamp(3rem, 6vw, 5rem); }
+.crumbs2 { display: flex; gap: .7rem; align-items: center; font-size: .9rem; margin: 0 0 1rem; color: var(--text); }
+.crumbs2 span { color: var(--muted); }
+.crumbs2 a:hover { color: var(--gold); }
+.crumbs2 b { font-weight: 400; }
+
+.edit-banner {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); align-items: stretch;
+  min-height: clamp(240px, 20vw, 300px); border-radius: 18px; overflow: hidden; background: var(--bg-2);
+}
+:root[data-theme="light"] .edit-banner { background: #efe7da; }
+.edit-copy { padding: clamp(1.6rem, 3.4vw, 3rem); align-self: center; position: relative; z-index: 1; }
+.edit-eyebrow { margin: 0 0 .6rem; color: var(--gold); font-size: .8rem; font-weight: 500; letter-spacing: .28em; text-transform: uppercase; }
+.edit-title { margin: 0 0 .9rem; font-family: var(--serif); font-weight: 400; font-size: clamp(2.1rem, 3.6vw, 3.4rem); line-height: 1.05; letter-spacing: -.02em; }
+.edit-title em { font-style: italic; color: var(--gold); }
+html[lang="ar"] .edit-title { font-family: "IBM Plex Sans Arabic", var(--sans); font-weight: 700; line-height: 1.25; }
+html[lang="ar"] .edit-title em { background: var(--hero-gold); -webkit-background-clip: text; background-clip: text; color: transparent; }
+html[lang="ar"] .edit-eyebrow { font-size: .95rem; }
+.edit-sub { margin: 0 0 1.5rem; max-width: 30rem; color: var(--muted); font-size: 1.05rem; line-height: 1.55; }
+.edit-btn { padding: .95rem 1.6rem; gap: .8rem; text-transform: none; letter-spacing: .01em; font-size: .95rem; }
+html[lang="ar"] .shop2 .edit-btn { font-size: 1rem; font-weight: 600; }
+[dir="rtl"] .edit-btn svg { transform: scaleX(-1); }
+.edit-photo { position: relative; clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%); }
+[dir="rtl"] .edit-photo { clip-path: polygon(0 0, 90% 0, 100% 100%, 0 100%); }
+.edit-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+.cat-pills { margin: 1.6rem 0 1.2rem; gap: .6rem; }
+.cat-pills .filter { padding: .6rem 1.4rem; font-family: var(--serif); font-size: .98rem; letter-spacing: 0; text-transform: none; color: var(--text); border-color: var(--line); background: transparent; }
+:root[data-theme="light"] .cat-pills .filter { border-color: rgba(45, 34, 16, .2); }
+.cat-pills .filter:hover { border-color: var(--gold); }
+.cat-pills .filter.active { background: var(--ink-bg); color: var(--ink-fg); border-color: var(--ink-bg); }
+html[lang="ar"] .shop2 .cat-pills .filter { font-family: "IBM Plex Sans Arabic", var(--sans); font-size: .98rem; }
+
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin: 0 0 1.4rem; }
+.list-title { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem 1.2rem; margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(1.7rem, 3vw, 2.5rem); line-height: 1.2; }
+html[lang="ar"] .list-title { font-family: "IBM Plex Sans Arabic", var(--sans); font-weight: 700; }
+.list-count { font-family: var(--sans); font-size: 1rem; font-weight: 400; color: var(--muted); padding-inline-start: 1.2rem; border-inline-start: 1px solid var(--line); text-transform: none; letter-spacing: 0; }
+.sort { display: inline-flex; align-items: center; gap: .4rem; padding: 0 .6rem 0 1rem; height: 46px; border: 1px solid var(--line); border-radius: 8px; font-size: .92rem; color: var(--text); }
+:root[data-theme="light"] .sort { border-color: rgba(45, 34, 16, .2); }
+.sort select { font: inherit; color: inherit; background: transparent; border: 0; padding: .4rem .3rem; cursor: pointer; outline: none; }
+.sort select option { background: var(--bg); color: var(--text); }
+.sort:focus-within { border-color: var(--gold); }
+
+/* product cards: photo on top, name and price below — no box */
+.grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2.2rem 1.4rem; }
+.grid .card { background: none; border: 0; border-radius: 0; padding: 0; overflow: visible; text-align: start; }
+.grid .card::before { display: none; }
+.grid .card:hover { transform: none; }
+.grid .card-visual.is-photo { margin: 0 0 1rem; border-radius: 14px; }
+.grid .card-gender, .grid .card > p { display: none; }
+.grid .card:has(.is-photo) .card-tag { top: .9rem; inset-inline-start: .9rem; background: #8d6a28; color: #fff; border: 0; font-family: var(--serif); font-style: italic; letter-spacing: .02em; text-transform: none; font-size: .9rem; padding: .2rem .8rem; }
+.grid .card-brand { font-size: .68rem; margin-bottom: .15rem; }
+.grid .card-row { display: block; }
+.grid .card-row h3 { margin: 0 0 .35rem; font-family: var(--serif); font-weight: 400; font-size: 1.32rem; line-height: 1.25; }
+html[lang="ar"] .grid .card-row h3 { font-family: "IBM Plex Sans Arabic", var(--sans); font-weight: 500; font-size: 1.15rem; }
+.grid .card-row .price { display: block; color: var(--gold); font-weight: 600; font-size: .95rem; letter-spacing: .12em; }
+.grid .card:hover .card-row h3 { color: var(--gold); }
+
+@media (max-width: 860px) {
+  .shop2 { padding-top: calc(74px + .8rem); }
+  .edit-banner { grid-template-columns: 1fr; }
+  .edit-photo, [dir="rtl"] .edit-photo { order: -1; aspect-ratio: 956 / 291; min-height: 150px; clip-path: none; }
+  .edit-copy { padding: 1.4rem 1.2rem 1.6rem; }
+  .cat-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .cat-pills .filter { flex-shrink: 0; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.6rem .9rem; }
+  .grid .card-row h3 { font-size: 1.05rem; }
+  html[lang="ar"] .grid .card-row h3 { font-size: 1rem; }
+  .grid .card-row .price { font-size: .85rem; letter-spacing: .06em; }
+}
+@media (max-width: 560px) {
+  .list-head { align-items: flex-start; }
+  .sort { width: 100%; justify-content: space-between; }
+  .sort select { flex: 1; }
+}

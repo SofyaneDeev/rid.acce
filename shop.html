@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body data-page="shop" class="inner-page">
   <div class="grain" aria-hidden="true"></div>
@@ -85,31 +85,39 @@
     </section>
 
     <!-- ============ STEP 2: PRODUCTS (shown with ?g=men / ?g=women) ============ -->
-    <section class="section page-top" id="shopMain" hidden>
-      <nav class="crumbs" aria-label="Breadcrumb">
-        <a href="index.html" data-i18n="crumbs.home">Home</a><span>/</span><a href="shop.html" data-i18n="crumbs.collection">Collection</a><span>/</span><b id="crumbGender"></b>
+    <section class="shop2" id="shopMain" hidden>
+      <nav class="crumbs2" aria-label="Breadcrumb">
+        <a href="index.html" data-i18n="crumbs.home">Home</a><span>/</span><b id="crumbGender"></b>
       </nav>
-      <div class="shop-head">
-        <div>
-          <p class="eyebrow" id="shopEyebrow"></p>
-          <h1 class="section-title" id="shopTitle"></h1>
+
+      <div class="edit-banner">
+        <div class="edit-copy">
+          <p class="edit-eyebrow" id="shopEyebrow"></p>
+          <h1 class="edit-title" id="shopTitle"></h1>
+          <p class="edit-sub" id="shopSub"></p>
+          <a href="#catFilters" class="btn btn-ink edit-btn"><span data-i18n="edit.btn">Explore the collection</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 12h15M14 6.5 19.5 12 14 17.5"/></svg></a>
         </div>
-        <p class="shop-sub" id="shopSub"></p>
+        <div class="edit-photo"><img id="editPhoto" src="images/brand/edit-women.webp" alt="" width="956" height="291" decoding="async" /></div>
       </div>
 
-      <div class="shop-toolbar">
-        <div class="seg" id="genderSeg" role="group">
-          <button data-gender="men" data-i18n="nav.men">Men</button>
-          <button data-gender="women" data-i18n="nav.women">Women</button>
-        </div>
-        <div class="filters" id="catFilters" role="group">
-          <button class="filter active" data-cat="all" data-i18n="cat.all">Everything</button>
-          <button class="filter" data-cat="Watches" data-i18n="cat.Watches">Watches</button>
-          <button class="filter" data-cat="Jewellery" data-i18n="cat.Jewellery">Jewellery</button>
-          <button class="filter" data-cat="Leather goods" data-i18n="cat.Leather goods">Bags &amp; leather</button>
-          <button class="filter" data-cat="Eyewear" data-i18n="cat.Eyewear">Eyewear</button>
-        </div>
-        <span class="result-count" id="resultCount"></span>
+      <div class="filters cat-pills" id="catFilters" role="group">
+        <button class="filter active" data-cat="all" data-i18n="list.all">All pieces</button>
+        <button class="filter" data-cat="Watches" data-i18n="cat.Watches">Watches</button>
+        <button class="filter" data-cat="Jewellery" data-i18n="cat.Jewellery">Jewellery</button>
+        <button class="filter" data-cat="Leather goods" data-i18n="cat.Leather goods">Bags &amp; leather</button>
+        <button class="filter" data-cat="Eyewear" data-i18n="cat.Eyewear">Eyewear</button>
+      </div>
+
+      <div class="list-head">
+        <h2 class="list-title"><span id="listTitle"></span><span class="list-count" id="resultCount"></span></h2>
+        <label class="sort">
+          <span data-i18n="sort.label">Sort by:</span>
+          <select id="sortSel">
+            <option value="featured" data-i18n="sort.featured">Featured</option>
+            <option value="asc" data-i18n="sort.asc">Price: low to high</option>
+            <option value="desc" data-i18n="sort.desc">Price: high to low</option>
+          </select>
+        </label>
       </div>
 
       <div class="grid" id="grid"></div>
@@ -192,7 +200,7 @@
 
   <script src="config.js?v=4"></script>
   <script src="products-seed.js?v=1"></script>
-  <script src="i18n.js?v=13"></script>
-  <script src="app.js?v=13"></script>
+  <script src="i18n.js?v=14"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>
