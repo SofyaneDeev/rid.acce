@@ -653,7 +653,6 @@
       ${p.brand ? `<span class="card-brand">${escapeHTML(p.brand)}</span>` : ""}
       <div class="card-row"><h3>${escapeHTML(p.name)}</h3><span class="price">${wasOf(p) ? `<s class="was">${fmt(wasOf(p))}</s>` : ""}${fmt(p.price)}</span></div>
       ${p.pack ? `<span class="card-packline">${escapeHTML(t("deal.includes", packCount(p)))}</span>` : ""}
-      ${lowLeft(p) ? `<span class="card-low">${escapeHTML(t("stock.left", p.stock))}</span>` : ""}
       <p>${escapeHTML(subtitle(p))}</p>
     </button>`;
 
@@ -947,7 +946,6 @@
     if (out) note.textContent = t("stock.out");
     else if (full) note.textContent = t("stock.allInBag");
     else if (qtyWarn) note.textContent = qtyWarn;
-    else if (lowLeft(current)) note.textContent = t("stock.left", current.stock);
     note.classList.toggle("is-warn", out || full || !!qtyWarn);
     // quantity picker
     $("#modalQty").hidden = out;
